@@ -10,6 +10,8 @@ const io = require('socket.io')(http, {
 });
 
 const sessionMap = new Map();
+const pendingFriendRequests = new Map(); // targetId -> Set<fromId>
+const pendingFriendResponses = new Map(); // targetId -> Array<{ from, accepted }>
 
 function generateSessionId(ua = '') {
     let hash = 0;
@@ -30,6 +32,23 @@ io.on('connection', (socket) => {
         : generateSessionId(ua);
 
     sessionMap.set(sessionId, socket.id);
+
+    // 补发离线期间收到的好友请求
+    const offlineRequests = pendingFriendRequests.get(sessionId);
+    if (offlineRequests && offlineRequests.size > 0) {
+        offlineRequests.forEach((fromId) => {
+            socket.emit('friend request received', { from: fromId });
+        });
+    }
+
+    // 补发离线期间收到的好友响应（处理完后清除）
+    const offlineResponses = pendingFriendResponses.get(sessionId);
+    if (offlineResponses && offlineResponses.length > 0) {
+        offlineResponses.forEach(({ from, accepted }) => {
+            socket.emit('friend response received', { from, accepted });
+        });
+        pendingFriendResponses.delete(sessionId);
+    }
 
     // 1. 发送用户的 ID 给自己
     socket.emit('session info', { id: sessionId });
@@ -68,23 +87,43 @@ io.on('connection', (socket) => {
         // 检查目标是否存在
         const targetSocketId = sessionMap.get(to);
         const targetSocket = targetSocketId && io.sockets.sockets.get(targetSocketId);
+
+        // 无论对方是否在线，都先记录离线请求，供之后登录时读取
+        const currentSet = pendingFriendRequests.get(to) || new Set();
+        currentSet.add(sessionId);
+        pendingFriendRequests.set(to, currentSet);
+
         if (targetSocket) {
             socket.to(targetSocketId).emit('friend request received', { from: sessionId });
             socket.emit('request sent', { success: true, to });
         } else {
-            socket.emit('request sent', { success: false, msg: '用户离线或ID不存在' });
+            socket.emit('request sent', { success: true, to });
         }
     });
 
     // 5. 好友响应处理
     socket.on('friend response', ({ to, accepted }) => {
         const targetSocketId = sessionMap.get(to);
-        if (!targetSocketId) return;
 
-        socket.to(targetSocketId).emit('friend response received', {
-            from: sessionId,
-            accepted
-        });
+        // 清理待处理请求，避免重复下发
+        const targetRequests = pendingFriendRequests.get(sessionId);
+        if (targetRequests) {
+            targetRequests.delete(to);
+            if (targetRequests.size === 0) pendingFriendRequests.delete(sessionId);
+            else pendingFriendRequests.set(sessionId, targetRequests);
+        }
+
+        // 目标在线直接推送，离线则存入待响应列表
+        if (targetSocketId) {
+            socket.to(targetSocketId).emit('friend response received', {
+                from: sessionId,
+                accepted
+            });
+        } else {
+            const responses = pendingFriendResponses.get(to) || [];
+            responses.push({ from: sessionId, accepted });
+            pendingFriendResponses.set(to, responses);
+        }
     });
 
     socket.on('disconnect', () => {
