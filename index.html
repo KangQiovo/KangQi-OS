@@ -783,6 +783,74 @@
         .rc-title { font-size: 20px; font-weight: 700; color: #fff; letter-spacing: 0.5px; }
         .rc-status { width: 10px; height: 10px; border-radius: 50%; background: #666; margin-right: 8px; transition: background 0.3s; box-shadow: 0 0 5px rgba(0,0,0,0.3); }
         .rc-status.connected { background: #00ff88; box-shadow: 0 0 10px #00ff88; }
+
+        /* 聊天工具栏（会话 ID + 好友操作） */
+        .rc-tools {
+            padding: 12px 20px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .rc-session-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 12px;
+            padding: 10px 12px;
+            color: #e9e9e9;
+            font-size: 13px;
+        }
+        .rc-session-id { font-family: monospace; font-size: 12px; opacity: 0.9; }
+        .rc-btn {
+            background: rgba(255,255,255,0.12);
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 8px 12px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: transform 0.15s ease, background 0.2s;
+        }
+        .rc-btn:active { transform: scale(0.97); background: rgba(255,255,255,0.18); }
+        .rc-friend-form {
+            display: flex;
+            gap: 8px;
+        }
+        .rc-friend-input {
+            flex: 1;
+            padding: 10px 12px;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 10px;
+            color: #fff;
+            font-size: 13px;
+        }
+        .rc-friends-list {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding-bottom: 6px;
+        }
+        .rc-friend-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 10px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 12px;
+            color: #fff;
+            font-size: 12px;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .rc-friend-chip.active { background: rgba(42, 171, 238, 0.3); border-color: rgba(42,171,238,0.6); }
+        .rc-friend-status { font-size: 11px; opacity: 0.8; }
+        .rc-mode-hint { font-size: 12px; color: rgba(255,255,255,0.7); padding: 0 20px 6px; }
         
         /* 聊天消息区域 */
         .rc-messages {
@@ -1298,9 +1366,22 @@
             </div>
             <div style="display:flex;align-items:center;">
                 <div class="rc-status" id="rc-status-dot"></div>
-                <div class="rc-title">Realtime Chat</div>
+                <div class="rc-title" id="rc-title">Realtime Chat</div>
             </div>
             <div style="width:40px;"></div> <!-- Spacer -->
+        </div>
+        <div class="rc-tools">
+            <div class="rc-session-row">
+                <span>我的 Session ID：</span>
+                <span class="rc-session-id" id="rc-session-id">未连接</span>
+                <button class="rc-btn" type="button" onclick="copySessionId()">复制</button>
+            </div>
+            <form class="rc-friend-form" id="rc-friend-form">
+                <input id="rc-friend-input" type="text" class="rc-friend-input" autocomplete="off" placeholder="输入好友 Session ID" />
+                <button class="rc-btn" type="submit">加好友</button>
+            </form>
+            <div class="rc-mode-hint" id="rc-mode-hint">当前模式：公共聊天室</div>
+            <div class="rc-friends-list" id="rc-friends-list"></div>
         </div>
         <div class="rc-messages" id="rc-messages">
             <div class="rc-bubble received">
@@ -2466,10 +2547,14 @@
         // IF RUNNING LOCALLY, use http://localhost:3000
         // Currently defaulted to Auto-Detect or specify full URL
         const CHAT_SERVER_URL = ""; // 如果你的HTML与Socket.io服务器不是同域，请填完整URL, 例如: "https://your-socket-server.com"
-        
+
         let socket;
         let isChatConnected = false;
-        
+        let mySessionId = '';
+        let currentChatTarget = null;
+        const friends = new Map(); // { id: { status: 'pending'|'accepted', direction: 'outgoing'|'incoming' } }
+        let friendFormBound = false;
+
         window.openChatApp = function() {
             document.body.classList.add('chat-open');
             if(!isChatConnected) initSocketConnection();
@@ -2484,59 +2569,219 @@
             try {
                 // If url is empty, it uses current domain (good for hosting html+server together)
                 socket = CHAT_SERVER_URL ? io(CHAT_SERVER_URL) : io();
-                
+
                 const statusDot = document.getElementById('rc-status-dot');
-                
+
                 socket.on('connect', () => {
                     console.log('Chat Connected');
                     isChatConnected = true;
                     if(statusDot) statusDot.classList.add('connected');
                 });
-                
+
                 socket.on('disconnect', () => {
                     console.log('Chat Disconnected');
                     if(statusDot) statusDot.classList.remove('connected');
+                    mySessionId = '';
+                    updateSessionUI();
                 });
-                
-                socket.on('chat message', (msg) => {
-                    // Check if message is mine to decide style
+
+                socket.on('session info', ({ id }) => {
+                    mySessionId = id;
+                    updateSessionUI();
+                });
+
+                socket.on('public message', (msg) => {
                     const isMe = msg.id === socket.id;
-                    addChatBubble(msg.text, isMe);
+                    addChatBubble(msg.text, isMe, { isPrivate: false, peerId: msg.id });
                 });
-                
+
+                // 兼容旧服务端事件名称
+                socket.on('chat message', (text) => {
+                    const isMe = false; // 缺少 ID，作为公共消息处理
+                    addChatBubble(text, isMe, { isPrivate: false });
+                });
+
+                socket.on('private message', ({ content, from }) => {
+                    addChatBubble(content, false, { isPrivate: true, peerId: from });
+                });
+
+                socket.on('friend request received', ({ from }) => {
+                    const accept = confirm(`收到来自 ${from} 的好友请求，是否接受？`);
+                    socket.emit('friend response', { to: from, accepted: accept });
+
+                    if (accept) {
+                        friends.set(from, { status: 'accepted', direction: 'incoming' });
+                        setActiveFriend(from);
+                        renderFriends();
+                        addChatBubble(`已接受 ${from} 的好友请求，现在可以开始私聊。`, false, { isPrivate: true, peerId: from });
+                    } else {
+                        addChatBubble(`你拒绝了来自 ${from} 的好友请求。`, false, { isPrivate: false });
+                    }
+                });
+
+                socket.on('friend response received', ({ from, accepted }) => {
+                    if (accepted) {
+                        friends.set(from, { status: 'accepted', direction: 'outgoing' });
+                        setActiveFriend(from);
+                        renderFriends();
+                        addChatBubble(`${from} 已接受你的好友请求，现在进入私聊模式。`, false, { isPrivate: true, peerId: from });
+                    } else {
+                        friends.set(from, { status: 'rejected', direction: 'outgoing' });
+                        renderFriends();
+                        addChatBubble(`${from} 拒绝了你的好友请求。`, false, { isPrivate: false });
+                    }
+                });
+
+                socket.on('request sent', ({ success, msg, to }) => {
+                    if (!success) {
+                        addChatBubble(msg || '发送好友请求失败', false, { isPrivate: false });
+                        friends.delete(to);
+                        renderFriends();
+                        return;
+                    }
+                    addChatBubble(`已向 ${to} 发送好友请求，等待对方通过。`, true, { isPrivate: false });
+                });
+
                 // Form handling
                 const form = document.getElementById('rc-form');
                 const input = document.getElementById('rc-input');
-                
+
                 form.addEventListener('submit', (e) => {
                     e.preventDefault();
-                    if (input.value) {
-                        socket.emit('chat message', input.value);
-                        input.value = '';
+                    const text = input.value.trim();
+                    if (!text) return;
+
+                    if (currentChatTarget) {
+                        socket.emit('private message', { content: text, to: currentChatTarget });
+                        addChatBubble(text, true, { isPrivate: true, peerId: currentChatTarget });
+                    } else {
+                        socket.emit('public message', { text });
                     }
+
+                    input.value = '';
                 });
-                
+
+                bindFriendForm();
+
             } catch(e) {
                 console.error("Socket Init Failed:", e);
                 const container = document.getElementById('rc-messages');
                 container.innerHTML += `<div style="text-align:center;color:#f55;font-size:12px;margin-top:10px;">Connection Failed: Is backend running?</div>`;
             }
         }
-        
-        function addChatBubble(text, isSent) {
+
+        function bindFriendForm() {
+            if (friendFormBound) return;
+            const friendForm = document.getElementById('rc-friend-form');
+            const friendInput = document.getElementById('rc-friend-input');
+
+            friendForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const targetId = friendInput.value.trim();
+                if (!targetId) return;
+                if (!socket || !isChatConnected) {
+                    addChatBubble('请先连接聊天室后再添加好友。', false, { isPrivate: false });
+                    return;
+                }
+                if (targetId === mySessionId) {
+                    addChatBubble('不能添加自己为好友。', false, { isPrivate: false });
+                    return;
+                }
+                if (friends.has(targetId) && friends.get(targetId).status !== 'rejected') {
+                    addChatBubble('已向该用户发送或建立好友关系。', false, { isPrivate: false });
+                    return;
+                }
+
+                friends.set(targetId, { status: 'pending', direction: 'outgoing' });
+                renderFriends();
+                socket.emit('friend request', { to: targetId });
+                friendInput.value = '';
+            });
+
+            friendFormBound = true;
+        }
+
+        function setActiveFriend(friendId) {
+            if (currentChatTarget === friendId) {
+                currentChatTarget = null;
+            } else {
+                currentChatTarget = friendId;
+            }
+            updateModeUI();
+            renderFriends();
+        }
+
+        function updateModeUI() {
+            const hint = document.getElementById('rc-mode-hint');
+            const title = document.getElementById('rc-title');
+            if (!hint || !title) return;
+            if (currentChatTarget) {
+                hint.textContent = `当前模式：与 ${currentChatTarget} 私聊`;
+                title.textContent = 'Private Chat';
+            } else {
+                hint.textContent = '当前模式：公共聊天室';
+                title.textContent = 'Realtime Chat';
+            }
+        }
+
+        function renderFriends() {
+            const container = document.getElementById('rc-friends-list');
+            if (!container) return;
+            container.innerHTML = '';
+
+            if (friends.size === 0) {
+                container.innerHTML = '<span style="color: rgba(255,255,255,0.5); font-size:12px;">暂无好友，添加后可私聊</span>';
+                return;
+            }
+
+            friends.forEach((info, id) => {
+                const chip = document.createElement('div');
+                chip.className = 'rc-friend-chip' + (currentChatTarget === id ? ' active' : '');
+                chip.innerHTML = `<span>${id}</span><span class="rc-friend-status">${info.status === 'accepted' ? '已通过' : info.status === 'rejected' ? '已拒绝' : '待确认'}</span>`;
+                chip.onclick = () => {
+                    if (info.status === 'accepted') {
+                        setActiveFriend(id);
+                    }
+                };
+                container.appendChild(chip);
+            });
+        }
+
+        function updateSessionUI() {
+            const sessionEl = document.getElementById('rc-session-id');
+            if (sessionEl) sessionEl.textContent = mySessionId || '未连接';
+        }
+
+        function copySessionId() {
+            if (!mySessionId) return;
+            navigator.clipboard?.writeText(mySessionId).then(() => {
+                addChatBubble('Session ID 已复制。', true, { isPrivate: false });
+            }).catch(() => {
+                addChatBubble('复制失败，请手动选择文本。', false, { isPrivate: false });
+            });
+        }
+
+        function addChatBubble(text, isSent, { isPrivate = false, peerId = '' } = {}) {
             const container = document.getElementById('rc-messages');
             const div = document.createElement('div');
-            
+
             // 使用 CSS 定义的 rc-bubble 样式，避免和 AI 的 bubble 冲突
             div.className = isSent ? 'rc-bubble sent' : 'rc-bubble received';
-            
+
             const now = new Date();
             const timeStr = now.getHours() + ":" + String(now.getMinutes()).padStart(2, '0');
-            
-            div.innerHTML = `${escapeHtml(text)} <div class="rc-meta">${timeStr}</div>`;
+
+            const modeTag = isPrivate ? '私聊' : '公共';
+            const peerTag = peerId ? ` · ${peerId}` : '';
+            div.innerHTML = `${escapeHtml(text)} <div class="rc-meta">${modeTag}${peerTag} · ${timeStr}</div>`;
             container.appendChild(div);
             container.scrollTop = container.scrollHeight;
         }
+
+        // 初始化基础展示
+        renderFriends();
+        updateModeUI();
+        updateSessionUI();
 
         function escapeHtml(text) {
             const map = {'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#039;'};

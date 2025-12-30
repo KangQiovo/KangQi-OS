@@ -12,13 +12,21 @@ io.on('connection', (socket) => {
     // 1. 发送用户的 ID 给自己
     socket.emit('session info', { id: socket.id });
 
-    // 2. 公共聊天广播
-    socket.on('public message', (msg) => {
-        io.emit('public message', { 
-            text: msg.text, 
+    // 2. 公共聊天广播 (兼容旧事件 "chat message")
+    const broadcastPublic = (text) => {
+        io.emit('public message', {
+            text,
             id: socket.id,
             username: "匿名用户"
         });
+    };
+
+    socket.on('public message', (msg) => {
+        if (msg?.text) broadcastPublic(msg.text);
+    });
+
+    socket.on('chat message', (text) => {
+        if (text) broadcastPublic(text);
     });
 
     // 3. 私聊消息转发
