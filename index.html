@@ -2543,20 +2543,37 @@
         }
 
         /* --- Real-time Chat Logic (Client) --- */
-        // 聊天服地址优先使用：自定义配置 → 当前页面同源 → 官方托管备用
+        // 聊天服地址优先使用：自定义配置 → 当前页面同源 → 官方托管备用（包含 http/https 兜底）
         const CHAT_ENDPOINTS = (() => {
-            const list = [];
-            if (window.CHAT_SERVER_URL) list.push(window.CHAT_SERVER_URL);
+            const set = new Set();
+            const addWithProtocolFallback = (raw) => {
+                if (!raw) return;
+                try {
+                    const url = new URL(raw, window.location.href);
+                    set.add(url.origin);
+                    // 为避免证书或代理限制，自动加入相反协议的兜底方案
+                    const opposite = url.protocol === 'https:'
+                        ? `http://${url.host}`
+                        : url.protocol === 'http:'
+                            ? `https://${url.host}`
+                            : '';
+                    if (opposite) set.add(opposite);
+                } catch (e) {
+                    console.warn('无法解析聊天端点', raw, e);
+                }
+            };
+
+            addWithProtocolFallback(window.CHAT_SERVER_URL);
             try {
                 if (window.location?.protocol?.startsWith('http')) {
-                    list.push(window.location.origin);
+                    addWithProtocolFallback(window.location.origin);
                 }
             } catch (e) {
                 // ignore
             }
-            list.push('https://chat.kangqiovo.com');
-            // 去重
-            return [...new Set(list.filter(Boolean))];
+            addWithProtocolFallback('https://chat.kangqiovo.com');
+            addWithProtocolFallback('http://chat.kangqiovo.com');
+            return [...set];
         })();
 
         let socket;
@@ -2601,10 +2618,12 @@
                 function handleConnect() {
                     socket = candidateSocket;
                     candidateSocket.off('connect_error', handleConnectError);
+                    candidateSocket.off('connect_timeout', handleConnectError);
                     candidateSocket.io.off('error', handleConnectError);
                     isChatConnected = true;
                     isConnecting = false;
                     if (statusDot) statusDot.classList.add('connected');
+                    addChatBubble(`已连接到聊天室 (${endpoint})，开始聊天吧！`, false, { isPrivate: false });
                     bindSocketEvents(candidateSocket, statusDot);
                 }
 
@@ -2612,6 +2631,7 @@
                     console.warn('连接失败，尝试备用端点', endpoint, err);
                     candidateSocket.off('connect', handleConnect);
                     candidateSocket.off('connect_error', handleConnectError);
+                    candidateSocket.off('connect_timeout', handleConnectError);
                     candidateSocket.io.off('error', handleConnectError);
                     candidateSocket.removeAllListeners();
                     candidateSocket.close();
@@ -2621,6 +2641,7 @@
 
                 candidateSocket.on('connect', handleConnect);
                 candidateSocket.on('connect_error', handleConnectError);
+                candidateSocket.on('connect_timeout', handleConnectError);
                 candidateSocket.io.on('error', handleConnectError);
             };
 
@@ -2637,8 +2658,11 @@
                 console.log('Chat Disconnected');
                 if(statusDot) statusDot.classList.remove('connected');
                 isChatConnected = false;
+                isConnecting = false;
                 mySessionId = '';
                 updateSessionUI();
+                addChatBubble('连接已断开，正在尝试重新连接…', false, { isPrivate: false });
+                setTimeout(() => initSocketConnection(), 500);
             });
 
             activeSocket.io.on('error', (err) => {
