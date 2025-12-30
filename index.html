@@ -2545,12 +2545,10 @@
         /* --- Real-time Chat Logic (Client) --- */
         // IMPORTANT: CHANGE THIS URL TO YOUR BAOTA NODE.JS SERVER URL (E.g. https://chat.kangqiovo.com)
         // IF RUNNING LOCALLY, use http://localhost:3000
-        // 默认：在 kangqiovo.com 域名下自动指向 https://chat.kangqiovo.com，其余环境使用同源连接
+        // 默认：始终指向托管的聊天服务，可通过 window.CHAT_SERVER_URL 自定义
         const CHAT_SERVER_URL = (() => {
-            const host = window.location.hostname;
             if (window.CHAT_SERVER_URL) return window.CHAT_SERVER_URL;
-            if (host.endsWith('kangqiovo.com')) return 'https://chat.kangqiovo.com';
-            return '';
+            return 'https://chat.kangqiovo.com';
         })();
 
         let socket;
