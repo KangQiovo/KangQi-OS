@@ -2544,13 +2544,13 @@
         }
 
         /* --- Camera App Logic (New) --- */
+        const CAMERA_APP_URL = "https://camera.kangqiovo.com";
+
         window.openCameraApp = function() {
             document.body.classList.add('camera-open');
             const frame = document.getElementById('camera-frame');
-            // Lazy load the camera URL to save resources/permissions until needed
-            if (!frame.src || frame.src === 'about:blank') {
-                frame.src = "https://camera.kangqiovo.com";
-            }
+            // Always ensure the iframe points to the camera domain when opened
+            frame.src = CAMERA_APP_URL;
         }
         
         window.closeCameraApp = function() {
