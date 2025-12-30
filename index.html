@@ -828,6 +828,41 @@
             color: #fff;
             font-size: 13px;
         }
+        .rc-requests-box {
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 12px;
+            padding: 10px 12px;
+            background: rgba(255,255,255,0.04);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .rc-requests-title {
+            font-size: 12px;
+            color: rgba(255,255,255,0.7);
+        }
+        .rc-requests-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .rc-request-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 10px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 10px;
+            color: #fff;
+            font-size: 12px;
+        }
+        .rc-request-actions {
+            display: flex;
+            gap: 6px;
+        }
+        .rc-request-id { font-family: monospace; }
         .rc-friends-list {
             display: flex;
             gap: 8px;
@@ -1380,6 +1415,10 @@
                 <input id="rc-friend-input" type="text" class="rc-friend-input" autocomplete="off" placeholder="输入好友 Session ID" />
                 <button class="rc-btn" type="submit">加好友</button>
             </form>
+            <div class="rc-requests-box">
+                <div class="rc-requests-title">好友请求</div>
+                <div class="rc-requests-list" id="rc-requests"></div>
+            </div>
             <div class="rc-mode-hint" id="rc-mode-hint">当前模式：公共聊天室</div>
             <div class="rc-friends-list" id="rc-friends-list"></div>
         </div>
@@ -2552,6 +2591,7 @@
         let mySessionId = '';
         let currentChatTarget = null;
         const friends = new Map(); // { id: { status: 'pending'|'accepted', direction: 'outgoing'|'incoming' } }
+        const incomingRequests = new Set();
         let friendFormBound = false;
 
         window.openChatApp = function() {
@@ -2601,10 +2641,16 @@
                 if(statusDot) statusDot.classList.remove('connected');
                 isChatConnected = false;
                 mySessionId = '';
+                currentChatTarget = null;
+                friends.clear();
+                incomingRequests.clear();
                 activeSocket.removeAllListeners();
                 activeSocket.close();
                 socket = null;
                 updateSessionUI();
+                updateModeUI();
+                renderFriends();
+                renderFriendRequests();
                 addChatBubble('连接已断开，正在尝试重新连接…', false, { isPrivate: false });
                 setTimeout(() => initSocketConnection(), 500);
             });
@@ -2640,28 +2686,32 @@
             });
 
             activeSocket.on('friend request received', ({ from }) => {
-                const accept = confirm(`收到来自 ${from} 的好友请求，是否接受？`);
-                activeSocket.emit('friend response', { to: from, accepted: accept });
-
-                if (accept) {
-                    friends.set(from, { status: 'accepted', direction: 'incoming' });
+                if (friends.get(from)?.status === 'accepted') {
+                    addChatBubble(`${from} 已在好友列表中，可直接私聊。`, false, { isPrivate: true, peerId: from });
                     setActiveFriend(from);
                     renderFriends();
-                    addChatBubble(`已接受 ${from} 的好友请求，现在可以开始私聊。`, false, { isPrivate: true, peerId: from });
-                } else {
-                    addChatBubble(`你拒绝了来自 ${from} 的好友请求。`, false, { isPrivate: false });
+                    return;
                 }
+                incomingRequests.add(from);
+                friends.set(from, { status: 'pending', direction: 'incoming' });
+                renderFriends();
+                renderFriendRequests();
+                addChatBubble(`收到来自 ${from} 的好友请求，请选择同意或拒绝。`, false, { isPrivate: false });
             });
 
             activeSocket.on('friend response received', ({ from, accepted }) => {
                 if (accepted) {
                     friends.set(from, { status: 'accepted', direction: 'outgoing' });
                     setActiveFriend(from);
+                    incomingRequests.delete(from);
                     renderFriends();
+                    renderFriendRequests();
                     addChatBubble(`${from} 已接受你的好友请求，现在进入私聊模式。`, false, { isPrivate: true, peerId: from });
                 } else {
                     friends.set(from, { status: 'rejected', direction: 'outgoing' });
+                    incomingRequests.delete(from);
                     renderFriends();
+                    renderFriendRequests();
                     addChatBubble(`${from} 拒绝了你的好友请求。`, false, { isPrivate: false });
                 }
             });
@@ -2722,6 +2772,7 @@
 
                 friends.set(targetId, { status: 'pending', direction: 'outgoing' });
                 renderFriends();
+                renderFriendRequests();
                 socket.emit('friend request', { to: targetId });
                 friendInput.value = '';
             });
@@ -2775,6 +2826,69 @@
             });
         }
 
+        function renderFriendRequests() {
+            const container = document.getElementById('rc-requests');
+            if (!container) return;
+            container.innerHTML = '';
+
+            if (incomingRequests.size === 0) {
+                container.innerHTML = '<span style="color: rgba(255,255,255,0.5); font-size:12px;">暂无待处理的好友请求</span>';
+                return;
+            }
+
+            incomingRequests.forEach((id) => {
+                const row = document.createElement('div');
+                row.className = 'rc-request-row';
+
+                const info = document.createElement('div');
+                info.className = 'rc-request-id';
+                info.textContent = id;
+
+                const actions = document.createElement('div');
+                actions.className = 'rc-request-actions';
+
+                const acceptBtn = document.createElement('button');
+                acceptBtn.className = 'rc-btn';
+                acceptBtn.textContent = '同意';
+                acceptBtn.onclick = () => respondToFriendRequest(id, true);
+
+                const rejectBtn = document.createElement('button');
+                rejectBtn.className = 'rc-btn';
+                rejectBtn.textContent = '拒绝';
+                rejectBtn.onclick = () => respondToFriendRequest(id, false);
+
+                actions.appendChild(acceptBtn);
+                actions.appendChild(rejectBtn);
+
+                row.appendChild(info);
+                row.appendChild(actions);
+
+                container.appendChild(row);
+            });
+        }
+
+        function respondToFriendRequest(friendId, accepted) {
+            if (!socket || !isChatConnected) {
+                addChatBubble('请先连接聊天室后再处理好友请求。', false, { isPrivate: false });
+                return;
+            }
+
+            incomingRequests.delete(friendId);
+            socket.emit('friend response', { to: friendId, accepted });
+
+            if (accepted) {
+                friends.set(friendId, { status: 'accepted', direction: 'incoming' });
+                setActiveFriend(friendId);
+                addChatBubble(`已接受 ${friendId} 的好友请求，现在可以开始私聊。`, false, { isPrivate: true, peerId: friendId });
+            } else {
+                friends.set(friendId, { status: 'rejected', direction: 'incoming' });
+                addChatBubble(`你拒绝了来自 ${friendId} 的好友请求。`, false, { isPrivate: false });
+            }
+
+            renderFriends();
+            renderFriendRequests();
+        }
+
         function updateSessionUI() {
             const sessionEl = document.getElementById('rc-session-id');
             if (sessionEl) sessionEl.textContent = mySessionId || '未连接';
@@ -2808,6 +2922,7 @@
 
         // 初始化基础展示
         renderFriends();
+        renderFriendRequests();
         updateModeUI();
         updateSessionUI();
 
