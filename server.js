@@ -34,15 +34,19 @@ io.on('connection', (socket) => {
     sessionMap.set(sessionId, socket.id);
 
     // 补发离线期间收到的好友请求，并同步当前待处理请求快照
-    const offlineRequests = pendingFriendRequests.get(sessionId);
-    if (offlineRequests && offlineRequests.size > 0) {
-        offlineRequests.forEach((fromId) => {
-            socket.emit('friend request received', { from: fromId });
+    const replayPendingRequests = () => {
+        const offlineRequests = pendingFriendRequests.get(sessionId);
+        if (offlineRequests && offlineRequests.size > 0) {
+            offlineRequests.forEach((fromId) => {
+                socket.emit('friend request received', { from: fromId });
+            });
+        }
+        socket.emit('pending friend requests', {
+            fromIds: Array.from(pendingFriendRequests.get(sessionId) || [])
         });
-    }
-    socket.emit('pending friend requests', {
-        fromIds: Array.from(pendingFriendRequests.get(sessionId) || [])
-    });
+    };
+
+    replayPendingRequests();
 
     // 补发离线期间收到的好友响应（处理完后清除）
     const offlineResponses = pendingFriendResponses.get(sessionId);
@@ -98,6 +102,9 @@ io.on('connection', (socket) => {
 
         if (targetSocket) {
             socket.to(targetSocketId).emit('friend request received', { from: sessionId });
+            socket.to(targetSocketId).emit('pending friend requests', {
+                fromIds: Array.from(currentSet)
+            });
             socket.emit('request sent', { success: true, to });
         } else {
             socket.emit('request sent', { success: true, to });
