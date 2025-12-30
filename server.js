@@ -2,8 +2,9 @@ const express = require('express');
 const app = express();
 const http = require('http').createServer(app);
 const io = require('socket.io')(http, {
+    // 允许任意来源连接，方便将前端静态文件与 Socket 服务分域部署
     cors: {
-        origin: "*.kangqiovo.com",
+        origin: '*',
         methods: ["GET", "POST"]
     }
 });

@@ -2545,8 +2545,13 @@
         /* --- Real-time Chat Logic (Client) --- */
         // IMPORTANT: CHANGE THIS URL TO YOUR BAOTA NODE.JS SERVER URL (E.g. https://chat.kangqiovo.com)
         // IF RUNNING LOCALLY, use http://localhost:3000
-        // Currently defaulted to Auto-Detect or specify full URL
-        const CHAT_SERVER_URL = ""; // 如果你的HTML与Socket.io服务器不是同域，请填完整URL, 例如: "https://your-socket-server.com"
+        // 默认：在 kangqiovo.com 域名下自动指向 https://chat.kangqiovo.com，其余环境使用同源连接
+        const CHAT_SERVER_URL = (() => {
+            const host = window.location.hostname;
+            if (window.CHAT_SERVER_URL) return window.CHAT_SERVER_URL;
+            if (host.endsWith('kangqiovo.com')) return 'https://chat.kangqiovo.com';
+            return '';
+        })();
 
         let socket;
         let isChatConnected = false;
@@ -2583,6 +2588,11 @@
                     if(statusDot) statusDot.classList.remove('connected');
                     mySessionId = '';
                     updateSessionUI();
+                });
+
+                socket.io.on('error', (err) => {
+                    console.error('Socket transport error:', err);
+                    addChatBubble('连接失败，请确认服务器地址可访问且已启用 HTTPS。', false, { isPrivate: false });
                 });
 
                 socket.on('session info', ({ id }) => {
