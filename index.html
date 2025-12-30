@@ -2543,36 +2543,28 @@
         }
 
         /* --- Real-time Chat Logic (Client) --- */
-        // 聊天服地址优先使用：自定义配置 → 当前页面同源 → 官方托管备用（包含 http/https 兜底）
+        // 聊天依赖 Socket.IO 服务，必须提供可访问的 Socket 端点（而非普通站点）。
+        // 端点优先级：自定义配置 → 当前页面同源。
         const CHAT_ENDPOINTS = (() => {
             const set = new Set();
-            const addWithProtocolFallback = (raw) => {
+            const addEndpoint = (raw) => {
                 if (!raw) return;
                 try {
                     const url = new URL(raw, window.location.href);
                     set.add(url.origin);
-                    // 为避免证书或代理限制，自动加入相反协议的兜底方案
-                    const opposite = url.protocol === 'https:'
-                        ? `http://${url.host}`
-                        : url.protocol === 'http:'
-                            ? `https://${url.host}`
-                            : '';
-                    if (opposite) set.add(opposite);
                 } catch (e) {
                     console.warn('无法解析聊天端点', raw, e);
                 }
             };
 
-            addWithProtocolFallback(window.CHAT_SERVER_URL);
+            addEndpoint(window.CHAT_SERVER_URL);
             try {
                 if (window.location?.protocol?.startsWith('http')) {
-                    addWithProtocolFallback(window.location.origin);
+                    addEndpoint(window.location.origin);
                 }
             } catch (e) {
                 // ignore
             }
-            addWithProtocolFallback('https://chat.kangqiovo.com');
-            addWithProtocolFallback('http://chat.kangqiovo.com');
             return [...set];
         })();
 
