@@ -2543,30 +2543,9 @@
         }
 
         /* --- Real-time Chat Logic (Client) --- */
-        // 聊天依赖 Socket.IO 服务，必须提供可访问的 Socket 端点（而非普通站点）。
-        // 端点优先级：自定义配置 → 当前页面同源。
-        const CHAT_ENDPOINTS = (() => {
-            const set = new Set();
-            const addEndpoint = (raw) => {
-                if (!raw) return;
-                try {
-                    const url = new URL(raw, window.location.href);
-                    set.add(url.origin);
-                } catch (e) {
-                    console.warn('无法解析聊天端点', raw, e);
-                }
-            };
-
-            addEndpoint(window.CHAT_SERVER_URL);
-            try {
-                if (window.location?.protocol?.startsWith('http')) {
-                    addEndpoint(window.location.origin);
-                }
-            } catch (e) {
-                // ignore
-            }
-            return [...set];
-        })();
+        // 聊天依赖 Socket.IO 服务，默认优先使用同域服务，可通过 window.CHAT_SERVER_URL 指定完整端点。
+        // 连接方式恢复为首个版本：如果未配置则直接调用 io()，以当前页面域名为服务端。
+        const CHAT_SERVER_URL = window.CHAT_SERVER_URL || "";
 
         let socket;
         let isChatConnected = false;
@@ -2574,7 +2553,6 @@
         let currentChatTarget = null;
         const friends = new Map(); // { id: { status: 'pending'|'accepted', direction: 'outgoing'|'incoming' } }
         let friendFormBound = false;
-        let isConnecting = false;
 
         window.openChatApp = function() {
             document.body.classList.add('chat-open');
@@ -2587,57 +2565,29 @@
         }
 
         function initSocketConnection() {
-            if (isConnecting || isChatConnected) return;
-            isConnecting = true;
+            if (isChatConnected) return;
+
+            // 如果已有 socket 实例但未连接，直接尝试重连即可
+            if (socket) {
+                addChatBubble('正在重新连接聊天室…', false, { isPrivate: false });
+                socket.connect();
+                return;
+            }
 
             const statusDot = document.getElementById('rc-status-dot');
+            addChatBubble('正在连接聊天室，请稍候…', false, { isPrivate: false });
 
-            const tryConnect = (index = 0) => {
-                if (index >= CHAT_ENDPOINTS.length) {
-                    isConnecting = false;
-                    addChatBubble('无法连接聊天室，请检查服务是否在线。', false, { isPrivate: false });
-                    return;
-                }
+            try {
+                // 如果没有自定义地址，io() 将使用当前页面域名作为 Socket 服务端
+                socket = CHAT_SERVER_URL ? io(CHAT_SERVER_URL) : io();
+            } catch (err) {
+                console.error('Socket 创建失败:', err);
+                addChatBubble('无法创建 Socket 连接，请检查服务端是否正常。', false, { isPrivate: false });
+                socket = null;
+                return;
+            }
 
-                const endpoint = CHAT_ENDPOINTS[index];
-                const isSameOrigin = endpoint === window.location.origin;
-                const ioTarget = isSameOrigin ? undefined : endpoint; // undefined => 当前域
-                const candidateSocket = io(ioTarget, {
-                    timeout: 5000,
-                    transports: ['websocket', 'polling']
-                });
-
-                function handleConnect() {
-                    socket = candidateSocket;
-                    candidateSocket.off('connect_error', handleConnectError);
-                    candidateSocket.off('connect_timeout', handleConnectError);
-                    candidateSocket.io.off('error', handleConnectError);
-                    isChatConnected = true;
-                    isConnecting = false;
-                    if (statusDot) statusDot.classList.add('connected');
-                    addChatBubble(`已连接到聊天室 (${endpoint})，开始聊天吧！`, false, { isPrivate: false });
-                    bindSocketEvents(candidateSocket, statusDot);
-                }
-
-                function handleConnectError(err) {
-                    console.warn('连接失败，尝试备用端点', endpoint, err);
-                    candidateSocket.off('connect', handleConnect);
-                    candidateSocket.off('connect_error', handleConnectError);
-                    candidateSocket.off('connect_timeout', handleConnectError);
-                    candidateSocket.io.off('error', handleConnectError);
-                    candidateSocket.removeAllListeners();
-                    candidateSocket.close();
-                    addChatBubble(`连接 ${endpoint} 失败，正在尝试备用服务器…`, false, { isPrivate: false });
-                    tryConnect(index + 1);
-                }
-
-                candidateSocket.on('connect', handleConnect);
-                candidateSocket.on('connect_error', handleConnectError);
-                candidateSocket.on('connect_timeout', handleConnectError);
-                candidateSocket.io.on('error', handleConnectError);
-            };
-
-            tryConnect(0);
+            bindSocketEvents(socket, statusDot);
         }
 
         function bindSocketEvents(activeSocket, statusDot) {
@@ -2650,8 +2600,10 @@
                 console.log('Chat Disconnected');
                 if(statusDot) statusDot.classList.remove('connected');
                 isChatConnected = false;
-                isConnecting = false;
                 mySessionId = '';
+                activeSocket.removeAllListeners();
+                activeSocket.close();
+                socket = null;
                 updateSessionUI();
                 addChatBubble('连接已断开，正在尝试重新连接…', false, { isPrivate: false });
                 setTimeout(() => initSocketConnection(), 500);
@@ -2660,6 +2612,11 @@
             activeSocket.io.on('error', (err) => {
                 console.error('Socket transport error:', err);
                 addChatBubble('连接异常，请确认服务器地址可访问且已启用 HTTPS。', false, { isPrivate: false });
+            });
+
+            activeSocket.on('connect_error', (err) => {
+                console.error('连接失败:', err);
+                addChatBubble('连接失败，请确认 Socket.IO 服务端地址正确且已启动。', false, { isPrivate: false });
             });
 
             activeSocket.on('session info', ({ id }) => {
