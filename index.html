@@ -2644,12 +2644,14 @@
         // 连接方式恢复为首个版本：如果未配置则直接调用 io()，以当前页面域名为服务端。
         const CHAT_SERVER_URL = window.CHAT_SERVER_URL || "";
         const CLIENT_SESSION_ID = generateUAHash(navigator.userAgent || '');
+        const FRIENDS_STORAGE_KEY = 'kq_chat_friends';
+        const REQUESTS_STORAGE_KEY = 'kq_chat_requests';
 
         let socket;
         let isChatConnected = false;
         let mySessionId = CLIENT_SESSION_ID;
         let currentChatTarget = null;
-        const friends = new Map(); // { id: { status: 'pending'|'accepted', direction: 'outgoing'|'incoming' } }
+        const friends = new Map(); // { id: { status: 'pending'|'accepted'|'rejected', direction: 'outgoing'|'incoming' } }
         const incomingRequests = new Set();
         let friendFormBound = false;
         let isChatVisible = false;
@@ -2658,6 +2660,44 @@
         const privateMessages = new Map(); // peerId -> []
         let unreadPublic = 0;
         const unreadPrivate = new Map();
+
+        function persistFriends() {
+            try {
+                localStorage.setItem(FRIENDS_STORAGE_KEY, JSON.stringify(Array.from(friends.entries())));
+            } catch (e) {
+                console.warn('无法保存好友列表', e);
+            }
+        }
+
+        function persistIncomingRequests() {
+            try {
+                localStorage.setItem(REQUESTS_STORAGE_KEY, JSON.stringify(Array.from(incomingRequests)));
+            } catch (e) {
+                console.warn('无法保存好友请求', e);
+            }
+        }
+
+        function loadPersistedState() {
+            try {
+                const rawFriends = localStorage.getItem(FRIENDS_STORAGE_KEY);
+                if (rawFriends) {
+                    JSON.parse(rawFriends).forEach(([id, info]) => friends.set(id, info));
+                }
+            } catch (e) {
+                console.warn('好友列表读取失败', e);
+            }
+
+            try {
+                const rawReq = localStorage.getItem(REQUESTS_STORAGE_KEY);
+                if (rawReq) {
+                    JSON.parse(rawReq).forEach((id) => incomingRequests.add(id));
+                }
+            } catch (e) {
+                console.warn('好友请求读取失败', e);
+            }
+        }
+
+        loadPersistedState();
 
         window.openChatApp = function() {
             document.body.classList.add('chat-open');
@@ -2688,7 +2728,13 @@
 
             const socketOptions = {
                 auth: { sessionId: CLIENT_SESSION_ID },
-                query: { sessionId: CLIENT_SESSION_ID }
+                query: { sessionId: CLIENT_SESSION_ID },
+                reconnection: true,
+                reconnectionAttempts: 8,
+                reconnectionDelay: 500,
+                reconnectionDelayMax: 2000,
+                autoConnect: true,
+                transports: ['websocket', 'polling']
             };
 
             try {
@@ -2708,26 +2754,24 @@
             activeSocket.on('connect', () => {
                 isChatConnected = true;
                 if (statusDot) statusDot.classList.add('connected');
+                updateSessionUI();
+            });
+
+            activeSocket.io.on('reconnect', () => {
+                isChatConnected = true;
+                if (statusDot) statusDot.classList.add('connected');
+                updateSessionUI();
+                addChatBubble('已重新连接聊天室。', false, { isPrivate: false });
             });
 
             activeSocket.on('disconnect', () => {
                 console.log('Chat Disconnected');
                 if(statusDot) statusDot.classList.remove('connected');
                 isChatConnected = false;
-                mySessionId = CLIENT_SESSION_ID;
-                currentChatTarget = null;
-                activeTab = 'public';
-                friends.clear();
-                incomingRequests.clear();
-                activeSocket.removeAllListeners();
-                activeSocket.close();
-                socket = null;
                 updateSessionUI();
-                switchTab('public');
-                renderFriends();
-                renderFriendRequests();
                 addChatBubble('连接已断开，正在尝试重新连接…', false, { isPrivate: false });
-                setTimeout(() => initSocketConnection(), 500);
+                // 交给 Socket.IO 自动重连；若失败，稍后手动触发 connect
+                setTimeout(() => { if (activeSocket && !activeSocket.connected) activeSocket.connect(); }, 800);
             });
 
             activeSocket.io.on('error', (err) => {
@@ -2757,6 +2801,11 @@
             });
 
             activeSocket.on('private message', ({ content, from }) => {
+                if (!friends.has(from) || friends.get(from)?.status !== 'accepted') {
+                    friends.set(from, { status: 'accepted', direction: 'incoming' });
+                    persistFriends();
+                    renderFriends();
+                }
                 addChatBubble(content, false, { isPrivate: true, peerId: from });
             });
 
@@ -2769,6 +2818,8 @@
                 }
                 incomingRequests.add(from);
                 friends.set(from, { status: 'pending', direction: 'incoming' });
+                persistIncomingRequests();
+                persistFriends();
                 renderFriends();
                 renderFriendRequests();
                 addChatBubble(`收到来自 ${from} 的好友请求，请选择同意或拒绝。`, false, { isPrivate: false });
@@ -2777,14 +2828,18 @@
             activeSocket.on('friend response received', ({ from, accepted }) => {
                 if (accepted) {
                     friends.set(from, { status: 'accepted', direction: 'outgoing' });
-                    setActiveFriend(from);
+                    setActiveFriend(from, true);
                     incomingRequests.delete(from);
+                    persistIncomingRequests();
+                    persistFriends();
                     renderFriends();
                     renderFriendRequests();
                     addChatBubble(`${from} 已接受你的好友请求，现在进入私聊模式。`, false, { isPrivate: true, peerId: from });
                 } else {
                     friends.set(from, { status: 'rejected', direction: 'outgoing' });
                     incomingRequests.delete(from);
+                    persistIncomingRequests();
+                    persistFriends();
                     renderFriends();
                     renderFriendRequests();
                     addChatBubble(`${from} 拒绝了你的好友请求。`, false, { isPrivate: false });
@@ -2795,6 +2850,7 @@
                 if (!success) {
                     addChatBubble(msg || '发送好友请求失败', false, { isPrivate: false });
                     friends.delete(to);
+                    persistFriends();
                     renderFriends();
                     return;
                 }
@@ -2809,6 +2865,12 @@
                 e.preventDefault();
                 const text = input.value.trim();
                 if (!text) return;
+
+                if (!activeSocket.connected) {
+                    addChatBubble('未连接到聊天室，正在尝试重新连接…', false, { isPrivate: false });
+                    activeSocket.connect();
+                    return;
+                }
 
                 if (activeTab === 'private' && !currentChatTarget) {
                     addChatBubble('请选择好友后再开始私聊。', false, { isPrivate: true });
@@ -2854,6 +2916,7 @@
                 friends.set(targetId, { status: 'pending', direction: 'outgoing' });
                 renderFriends();
                 renderFriendRequests();
+                persistFriends();
                 socket.emit('friend request', { to: targetId });
                 friendInput.value = '';
             });
@@ -2861,8 +2924,8 @@
             friendFormBound = true;
         }
 
-        function setActiveFriend(friendId) {
-            if (currentChatTarget === friendId) {
+        function setActiveFriend(friendId, force = false) {
+            if (!force && currentChatTarget === friendId) {
                 currentChatTarget = null;
             } else {
                 currentChatTarget = friendId;
@@ -2996,7 +3059,7 @@
 
             if (accepted) {
                 friends.set(friendId, { status: 'accepted', direction: 'incoming' });
-                setActiveFriend(friendId);
+                setActiveFriend(friendId, true);
                 addChatBubble(`已接受 ${friendId} 的好友请求，现在可以开始私聊。`, false, { isPrivate: true, peerId: friendId });
             } else {
                 friends.set(friendId, { status: 'rejected', direction: 'incoming' });
@@ -3005,6 +3068,8 @@
 
             renderFriends();
             renderFriendRequests();
+            persistFriends();
+            persistIncomingRequests();
         }
 
         function updateSessionUI() {
