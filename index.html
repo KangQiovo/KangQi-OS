@@ -2825,6 +2825,21 @@
                 addChatBubble(`收到来自 ${from} 的好友请求，请选择同意或拒绝。`, false, { isPrivate: false });
             });
 
+            activeSocket.on('pending friend requests', ({ fromIds = [] }) => {
+                incomingRequests.clear();
+                fromIds.forEach((from) => {
+                    incomingRequests.add(from);
+                    const existing = friends.get(from);
+                    if (!existing || existing.status !== 'accepted') {
+                        friends.set(from, { status: 'pending', direction: 'incoming' });
+                    }
+                });
+                persistIncomingRequests();
+                persistFriends();
+                renderFriends();
+                renderFriendRequests();
+            });
+
             activeSocket.on('friend response received', ({ from, accepted }) => {
                 if (accepted) {
                     friends.set(from, { status: 'accepted', direction: 'outgoing' });

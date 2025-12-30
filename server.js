@@ -33,13 +33,16 @@ io.on('connection', (socket) => {
 
     sessionMap.set(sessionId, socket.id);
 
-    // 补发离线期间收到的好友请求
+    // 补发离线期间收到的好友请求，并同步当前待处理请求快照
     const offlineRequests = pendingFriendRequests.get(sessionId);
     if (offlineRequests && offlineRequests.size > 0) {
         offlineRequests.forEach((fromId) => {
             socket.emit('friend request received', { from: fromId });
         });
     }
+    socket.emit('pending friend requests', {
+        fromIds: Array.from(pendingFriendRequests.get(sessionId) || [])
+    });
 
     // 补发离线期间收到的好友响应（处理完后清除）
     const offlineResponses = pendingFriendResponses.get(sessionId);
