@@ -2543,12 +2543,20 @@
         }
 
         /* --- Real-time Chat Logic (Client) --- */
-        // IMPORTANT: CHANGE THIS URL TO YOUR BAOTA NODE.JS SERVER URL (E.g. https://chat.kangqiovo.com)
-        // IF RUNNING LOCALLY, use http://localhost:3000
-        // 默认：始终指向托管的聊天服务，可通过 window.CHAT_SERVER_URL 自定义
-        const CHAT_SERVER_URL = (() => {
-            if (window.CHAT_SERVER_URL) return window.CHAT_SERVER_URL;
-            return 'https://chat.kangqiovo.com';
+        // 聊天服地址优先使用：自定义配置 → 当前页面同源 → 官方托管备用
+        const CHAT_ENDPOINTS = (() => {
+            const list = [];
+            if (window.CHAT_SERVER_URL) list.push(window.CHAT_SERVER_URL);
+            try {
+                if (window.location?.protocol?.startsWith('http')) {
+                    list.push(window.location.origin);
+                }
+            } catch (e) {
+                // ignore
+            }
+            list.push('https://chat.kangqiovo.com');
+            // 去重
+            return [...new Set(list.filter(Boolean))];
         })();
 
         let socket;
@@ -2557,6 +2565,7 @@
         let currentChatTarget = null;
         const friends = new Map(); // { id: { status: 'pending'|'accepted', direction: 'outgoing'|'incoming' } }
         let friendFormBound = false;
+        let isConnecting = false;
 
         window.openChatApp = function() {
             document.body.classList.add('chat-open');
@@ -2569,113 +2578,151 @@
         }
 
         function initSocketConnection() {
-            try {
-                // If url is empty, it uses current domain (good for hosting html+server together)
-                socket = CHAT_SERVER_URL ? io(CHAT_SERVER_URL) : io();
+            if (isConnecting || isChatConnected) return;
+            isConnecting = true;
 
-                const statusDot = document.getElementById('rc-status-dot');
+            const statusDot = document.getElementById('rc-status-dot');
 
-                socket.on('connect', () => {
-                    console.log('Chat Connected');
+            const tryConnect = (index = 0) => {
+                if (index >= CHAT_ENDPOINTS.length) {
+                    isConnecting = false;
+                    addChatBubble('无法连接聊天室，请检查服务是否在线。', false, { isPrivate: false });
+                    return;
+                }
+
+                const endpoint = CHAT_ENDPOINTS[index];
+                const isSameOrigin = endpoint === window.location.origin;
+                const ioTarget = isSameOrigin ? undefined : endpoint; // undefined => 当前域
+                const candidateSocket = io(ioTarget, {
+                    timeout: 5000,
+                    transports: ['websocket', 'polling']
+                });
+
+                function handleConnect() {
+                    socket = candidateSocket;
+                    candidateSocket.off('connect_error', handleConnectError);
+                    candidateSocket.io.off('error', handleConnectError);
                     isChatConnected = true;
-                    if(statusDot) statusDot.classList.add('connected');
-                });
+                    isConnecting = false;
+                    if (statusDot) statusDot.classList.add('connected');
+                    bindSocketEvents(candidateSocket, statusDot);
+                }
 
-                socket.on('disconnect', () => {
-                    console.log('Chat Disconnected');
-                    if(statusDot) statusDot.classList.remove('connected');
-                    mySessionId = '';
-                    updateSessionUI();
-                });
+                function handleConnectError(err) {
+                    console.warn('连接失败，尝试备用端点', endpoint, err);
+                    candidateSocket.off('connect', handleConnect);
+                    candidateSocket.off('connect_error', handleConnectError);
+                    candidateSocket.io.off('error', handleConnectError);
+                    candidateSocket.removeAllListeners();
+                    candidateSocket.close();
+                    addChatBubble(`连接 ${endpoint} 失败，正在尝试备用服务器…`, false, { isPrivate: false });
+                    tryConnect(index + 1);
+                }
 
-                socket.io.on('error', (err) => {
-                    console.error('Socket transport error:', err);
-                    addChatBubble('连接失败，请确认服务器地址可访问且已启用 HTTPS。', false, { isPrivate: false });
-                });
+                candidateSocket.on('connect', handleConnect);
+                candidateSocket.on('connect_error', handleConnectError);
+                candidateSocket.io.on('error', handleConnectError);
+            };
 
-                socket.on('session info', ({ id }) => {
-                    mySessionId = id;
-                    updateSessionUI();
-                });
+            tryConnect(0);
+        }
 
-                socket.on('public message', (msg) => {
-                    const isMe = msg.id === socket.id;
-                    addChatBubble(msg.text, isMe, { isPrivate: false, peerId: msg.id });
-                });
+        function bindSocketEvents(activeSocket, statusDot) {
+            activeSocket.on('connect', () => {
+                isChatConnected = true;
+                if (statusDot) statusDot.classList.add('connected');
+            });
 
-                // 兼容旧服务端事件名称
-                socket.on('chat message', (text) => {
-                    const isMe = false; // 缺少 ID，作为公共消息处理
-                    addChatBubble(text, isMe, { isPrivate: false });
-                });
+            activeSocket.on('disconnect', () => {
+                console.log('Chat Disconnected');
+                if(statusDot) statusDot.classList.remove('connected');
+                isChatConnected = false;
+                mySessionId = '';
+                updateSessionUI();
+            });
 
-                socket.on('private message', ({ content, from }) => {
-                    addChatBubble(content, false, { isPrivate: true, peerId: from });
-                });
+            activeSocket.io.on('error', (err) => {
+                console.error('Socket transport error:', err);
+                addChatBubble('连接异常，请确认服务器地址可访问且已启用 HTTPS。', false, { isPrivate: false });
+            });
 
-                socket.on('friend request received', ({ from }) => {
-                    const accept = confirm(`收到来自 ${from} 的好友请求，是否接受？`);
-                    socket.emit('friend response', { to: from, accepted: accept });
+            activeSocket.on('session info', ({ id }) => {
+                mySessionId = id;
+                updateSessionUI();
+            });
 
-                    if (accept) {
-                        friends.set(from, { status: 'accepted', direction: 'incoming' });
-                        setActiveFriend(from);
-                        renderFriends();
-                        addChatBubble(`已接受 ${from} 的好友请求，现在可以开始私聊。`, false, { isPrivate: true, peerId: from });
-                    } else {
-                        addChatBubble(`你拒绝了来自 ${from} 的好友请求。`, false, { isPrivate: false });
-                    }
-                });
+            activeSocket.on('public message', (msg) => {
+                const isMe = msg.id === activeSocket.id;
+                addChatBubble(msg.text, isMe, { isPrivate: false, peerId: msg.id });
+            });
 
-                socket.on('friend response received', ({ from, accepted }) => {
-                    if (accepted) {
-                        friends.set(from, { status: 'accepted', direction: 'outgoing' });
-                        setActiveFriend(from);
-                        renderFriends();
-                        addChatBubble(`${from} 已接受你的好友请求，现在进入私聊模式。`, false, { isPrivate: true, peerId: from });
-                    } else {
-                        friends.set(from, { status: 'rejected', direction: 'outgoing' });
-                        renderFriends();
-                        addChatBubble(`${from} 拒绝了你的好友请求。`, false, { isPrivate: false });
-                    }
-                });
+            // 兼容旧服务端事件名称
+            activeSocket.on('chat message', (text) => {
+                const isMe = false; // 缺少 ID，作为公共消息处理
+                addChatBubble(text, isMe, { isPrivate: false });
+            });
 
-                socket.on('request sent', ({ success, msg, to }) => {
-                    if (!success) {
-                        addChatBubble(msg || '发送好友请求失败', false, { isPrivate: false });
-                        friends.delete(to);
-                        renderFriends();
-                        return;
-                    }
-                    addChatBubble(`已向 ${to} 发送好友请求，等待对方通过。`, true, { isPrivate: false });
-                });
+            activeSocket.on('private message', ({ content, from }) => {
+                addChatBubble(content, false, { isPrivate: true, peerId: from });
+            });
 
-                // Form handling
-                const form = document.getElementById('rc-form');
-                const input = document.getElementById('rc-input');
+            activeSocket.on('friend request received', ({ from }) => {
+                const accept = confirm(`收到来自 ${from} 的好友请求，是否接受？`);
+                activeSocket.emit('friend response', { to: from, accepted: accept });
 
-                form.addEventListener('submit', (e) => {
-                    e.preventDefault();
-                    const text = input.value.trim();
-                    if (!text) return;
+                if (accept) {
+                    friends.set(from, { status: 'accepted', direction: 'incoming' });
+                    setActiveFriend(from);
+                    renderFriends();
+                    addChatBubble(`已接受 ${from} 的好友请求，现在可以开始私聊。`, false, { isPrivate: true, peerId: from });
+                } else {
+                    addChatBubble(`你拒绝了来自 ${from} 的好友请求。`, false, { isPrivate: false });
+                }
+            });
 
-                    if (currentChatTarget) {
-                        socket.emit('private message', { content: text, to: currentChatTarget });
-                        addChatBubble(text, true, { isPrivate: true, peerId: currentChatTarget });
-                    } else {
-                        socket.emit('public message', { text });
-                    }
+            activeSocket.on('friend response received', ({ from, accepted }) => {
+                if (accepted) {
+                    friends.set(from, { status: 'accepted', direction: 'outgoing' });
+                    setActiveFriend(from);
+                    renderFriends();
+                    addChatBubble(`${from} 已接受你的好友请求，现在进入私聊模式。`, false, { isPrivate: true, peerId: from });
+                } else {
+                    friends.set(from, { status: 'rejected', direction: 'outgoing' });
+                    renderFriends();
+                    addChatBubble(`${from} 拒绝了你的好友请求。`, false, { isPrivate: false });
+                }
+            });
 
-                    input.value = '';
-                });
+            activeSocket.on('request sent', ({ success, msg, to }) => {
+                if (!success) {
+                    addChatBubble(msg || '发送好友请求失败', false, { isPrivate: false });
+                    friends.delete(to);
+                    renderFriends();
+                    return;
+                }
+                addChatBubble(`已向 ${to} 发送好友请求，等待对方通过。`, true, { isPrivate: false });
+            });
 
-                bindFriendForm();
+            // Form handling
+            const form = document.getElementById('rc-form');
+            const input = document.getElementById('rc-input');
 
-            } catch(e) {
-                console.error("Socket Init Failed:", e);
-                const container = document.getElementById('rc-messages');
-                container.innerHTML += `<div style="text-align:center;color:#f55;font-size:12px;margin-top:10px;">Connection Failed: Is backend running?</div>`;
-            }
+            form.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const text = input.value.trim();
+                if (!text) return;
+
+                if (currentChatTarget) {
+                    activeSocket.emit('private message', { content: text, to: currentChatTarget });
+                    addChatBubble(text, true, { isPrivate: true, peerId: currentChatTarget });
+                } else {
+                    activeSocket.emit('public message', { text });
+                }
+
+                input.value = '';
+            });
+
+            bindFriendForm();
         }
 
         function bindFriendForm() {
