@@ -762,6 +762,15 @@
         }
         body.chat-open .chat-overlay-container { transform: translateY(0); opacity: 1; pointer-events: auto; }
 
+        .rc-body {
+            display: grid;
+            grid-template-rows: auto auto 1fr;
+            gap: 12px;
+            flex: 1;
+            min-height: 0;
+            overflow: hidden;
+        }
+
         .rc-identity {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -850,7 +859,7 @@
             color: #e9e9e9;
             font-size: 13px;
         }
-        .rc-session-id { font-family: monospace; font-size: 12px; opacity: 0.9; }
+        .rc-session-id { font-family: monospace; font-size: 12px; opacity: 0.9; word-break: break-all; }
         .rc-btn {
             background: rgba(255,255,255,0.12);
             color: #fff;
@@ -969,11 +978,12 @@
         .app-badge { position: absolute; top: -6px; right: -6px; box-shadow: 0 4px 10px rgba(0,0,0,0.35); }
 
         /* 聊天消息区域 */
-        .rc-messages-wrap { flex: 1; display: flex; flex-direction: column; overflow: hidden; padding: 0 20px 12px; }
+        .rc-messages-wrap { flex: 1; display: flex; flex-direction: column; overflow: hidden; padding: 0 20px 12px; min-height: 0; }
         .rc-messages {
             flex: 1; padding: 16px 0 10px;
             overflow-y: auto; display: none; flex-direction: column; gap: 12px;
             -webkit-overflow-scrolling: touch;
+            min-height: 0;
         }
         .rc-messages.active { display: flex; }
         
@@ -1062,7 +1072,9 @@
             .chat-overlay-container {
                 padding: calc(12px + env(safe-area-inset-top)) 10px calc(14px + env(safe-area-inset-bottom));
                 justify-content: flex-start;
+                gap: 10px;
             }
+            .rc-body { gap: 10px; }
             .rc-header {
                 padding: 10px 10px 6px;
                 position: sticky;
@@ -1072,18 +1084,48 @@
                 -webkit-backdrop-filter: blur(10px);
             }
             .rc-tools {
-                padding: 6px 10px 0;
-                max-height: 36vh;
+                padding: 10px 10px 6px;
+                max-height: 38vh;
+                background: rgba(0,0,0,0.2);
+                border-radius: 14px;
+                border: 1px solid rgba(255,255,255,0.08);
+                overflow: auto;
             }
             .rc-identity { grid-template-columns: 1fr; }
-            .rc-session-row,
-            .rc-friend-form,
-            .rc-requests-box { width: 100%; }
-            .rc-tabs { padding: 8px 10px; position: sticky; top: 60px; z-index: 2; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
-            .rc-messages-wrap { padding: 0 10px 10px; }
-            .rc-input-area { padding: 10px 12px; }
-            .rc-input { font-size: 14px; padding: 12px 14px; }
-            .rc-bubble { font-size: 14px; }
+            .rc-session-row { flex-direction: column; align-items: flex-start; }
+            .rc-session-row .rc-btn { width: 100%; }
+            .rc-friend-form { width: 100%; flex-direction: column; }
+            .rc-friend-input { width: 100%; }
+            .rc-requests-box { width: 100%; padding: 10px; gap: 6px; }
+            .rc-requests-list { gap: 6px; }
+            .rc-request-row { align-items: flex-start; flex-direction: column; }
+            .rc-request-actions { width: 100%; justify-content: flex-end; }
+            .rc-mode-hint { padding: 0 10px 4px; }
+            .rc-friends-list { flex-wrap: wrap; }
+            .rc-friend-chip { width: 100%; justify-content: space-between; }
+            .rc-tabs { padding: 8px 10px; position: sticky; top: 0; z-index: 2; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+            .rc-messages-wrap { padding: 0 6px 10px; }
+            .rc-messages { padding: 12px 6px 8px; }
+            .rc-input-area { padding: 12px 12px; flex-direction: column; gap: 10px; align-items: stretch; }
+            .rc-form { flex-wrap: wrap; align-items: center; gap: 8px; }
+            .rc-emoji-toggle { order: 1; width: 46px; height: 46px; }
+            .rc-input { order: 2; flex: 1 1 100%; min-width: 0; font-size: 14px; padding: 12px 14px; }
+            .rc-ios-btn.secondary { order: 3; flex: 1 1 calc(50% - 6px); text-align: center; }
+            #rc-voice-btn { order: 4; }
+            .rc-send-btn { order: 5; width: 46px; height: 46px; margin-left: auto; }
+            .rc-emoji-panel { width: 100%; }
+            .rc-bubble { font-size: 14px; max-width: 92%; }
+            .rc-bubble .rc-head { flex-wrap: wrap; }
+        }
+
+        @media (max-width: 480px) {
+            .chat-overlay-container { padding: calc(10px + env(safe-area-inset-top)) 8px calc(12px + env(safe-area-inset-bottom)); }
+            .rc-title { font-size: 18px; }
+            .rc-tools { max-height: 44vh; }
+            .rc-tab { font-size: 13px; padding: 10px 8px; }
+            .rc-mode-hint { font-size: 11px; }
+            .rc-bubble img.rc-media { max-width: 100%; }
+            audio.rc-media { width: 100%; }
         }
 
         /* === NEW: Camera App Styles === */
@@ -1534,43 +1576,45 @@
             </div>
             <div style="width:40px;"></div> <!-- Spacer -->
         </div>
-        <div class="rc-tools">
-            <div class="rc-identity">
-                <div class="rc-identity-card">
-                    <div class="rc-identity-title">当前身份</div>
-                    <div class="rc-identity-value" id="rc-identity-type">游客</div>
-                    <button class="rc-ios-btn" type="button" onclick="openLogin()">使用 KangQi 账户登录</button>
+        <div class="rc-body">
+            <div class="rc-tools">
+                <div class="rc-identity">
+                    <div class="rc-identity-card">
+                        <div class="rc-identity-title">当前身份</div>
+                        <div class="rc-identity-value" id="rc-identity-type">游客</div>
+                        <button class="rc-ios-btn" type="button" onclick="openLogin()">使用 KangQi 账户登录</button>
+                    </div>
+                    <div class="rc-identity-card">
+                        <div class="rc-identity-title">设备与位置</div>
+                        <div class="rc-identity-value" id="rc-device-info">检测中…</div>
+                        <div class="rc-identity-title" id="rc-location-info">中国四川</div>
+                    </div>
                 </div>
-                <div class="rc-identity-card">
-                    <div class="rc-identity-title">设备与位置</div>
-                    <div class="rc-identity-value" id="rc-device-info">检测中…</div>
-                    <div class="rc-identity-title" id="rc-location-info">中国四川</div>
+                <div class="rc-session-row">
+                    <span>我的 Session ID：</span>
+                    <span class="rc-session-id" id="rc-session-id">未连接</span>
+                    <button class="rc-btn" type="button" onclick="copySessionId()">复制</button>
                 </div>
+                <form class="rc-friend-form" id="rc-friend-form">
+                    <input id="rc-friend-input" type="text" class="rc-friend-input" autocomplete="off" placeholder="输入好友 Session ID" />
+                    <button class="rc-btn" type="submit">加好友</button>
+                </form>
+                <div class="rc-requests-box">
+                    <div class="rc-requests-title">好友请求</div>
+                    <div class="rc-requests-list" id="rc-requests"></div>
+                </div>
+                <div class="rc-mode-hint" id="rc-mode-hint">当前模式：公共聊天室</div>
+                <div class="rc-friends-list" id="rc-friends-list"></div>
             </div>
-            <div class="rc-session-row">
-                <span>我的 Session ID：</span>
-                <span class="rc-session-id" id="rc-session-id">未连接</span>
-                <button class="rc-btn" type="button" onclick="copySessionId()">复制</button>
+            <div class="rc-tabs">
+                <button class="rc-tab active" data-tab="public">公共频道 <span class="rc-badge" id="rc-badge-public"></span></button>
+                <button class="rc-tab" data-tab="private">私聊 <span class="rc-badge" id="rc-badge-private"></span></button>
             </div>
-            <form class="rc-friend-form" id="rc-friend-form">
-                <input id="rc-friend-input" type="text" class="rc-friend-input" autocomplete="off" placeholder="输入好友 Session ID" />
-                <button class="rc-btn" type="submit">加好友</button>
-            </form>
-            <div class="rc-requests-box">
-                <div class="rc-requests-title">好友请求</div>
-                <div class="rc-requests-list" id="rc-requests"></div>
-            </div>
-            <div class="rc-mode-hint" id="rc-mode-hint">当前模式：公共聊天室</div>
-            <div class="rc-friends-list" id="rc-friends-list"></div>
-        </div>
-        <div class="rc-tabs">
-            <button class="rc-tab active" data-tab="public">公共频道 <span class="rc-badge" id="rc-badge-public"></span></button>
-            <button class="rc-tab" data-tab="private">私聊 <span class="rc-badge" id="rc-badge-private"></span></button>
-        </div>
-        <div class="rc-messages-wrap">
-            <div class="rc-messages active" id="rc-public-messages"></div>
-            <div class="rc-messages" id="rc-private-messages">
-                <div class="rc-empty">请选择好友开始私聊</div>
+            <div class="rc-messages-wrap">
+                <div class="rc-messages active" id="rc-public-messages"></div>
+                <div class="rc-messages" id="rc-private-messages">
+                    <div class="rc-empty">请选择好友开始私聊</div>
+                </div>
             </div>
         </div>
         <div class="rc-input-area">
