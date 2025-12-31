@@ -262,7 +262,7 @@
         .app-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; width: 90%; max-width: 400px; padding: 20px; position: relative; z-index: 100; }
         .app-icon { display: flex; flex-direction: column; align-items: center; gap: 8px; cursor: pointer; transition: transform 0.2s cubic-bezier(0.2,0.8,0.2,1); -webkit-tap-highlight-color: transparent; }
         .app-icon:active { transform: scale(0.9); }
-        .icon-box { width: 64px; height: 64px; background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); border-radius: 18px; border: 1px solid rgba(255,255,255,0.15); display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(0,0,0,0.2); pointer-events: none; }
+        .icon-box { position: relative; width: 64px; height: 64px; background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); border-radius: 18px; border: 1px solid rgba(255,255,255,0.15); display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(0,0,0,0.2); pointer-events: none; }
         .icon-box svg { width: 32px; height: 32px; stroke: #fff; fill: none; stroke-width: 1.5; }
         .app-name { color: rgba(255,255,255,0.9); font-size: 12px; font-weight: 500; text-shadow: 0 1px 2px rgba(0,0,0,0.5); pointer-events: none; }
 
@@ -749,6 +749,8 @@
         .chat-overlay-container {
             position: fixed; inset: 0; width: 100%; height: 100%; z-index: 210; /* 比AI略高，确保置顶 */
             display: flex; flex-direction: column;
+            padding: 16px;
+            overflow: hidden;
             
             /* 背景设置: 使用深色磨砂+透视液态背景 (使用 HTML 里的 liquid-bg) */
             background: rgba(10, 10, 20, 0.65);
@@ -759,6 +761,58 @@
             transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.5s ease;
         }
         body.chat-open .chat-overlay-container { transform: translateY(0); opacity: 1; pointer-events: auto; }
+
+        .rc-body {
+            display: grid;
+            grid-template-rows: auto auto 1fr;
+            gap: 12px;
+            flex: 1;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        .rc-identity {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 10px;
+        }
+        .rc-identity-card {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 14px;
+            padding: 12px 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.35);
+        }
+        .rc-identity-title { font-size: 13px; color: rgba(255,255,255,0.6); letter-spacing: 0.5px; }
+        .rc-identity-value { font-size: 16px; font-weight: 700; color: #fff; }
+        .rc-ios-btn {
+            border: 1px solid rgba(255,255,255,0.2);
+            background: linear-gradient(145deg, rgba(255,255,255,0.18), rgba(255,255,255,0.08));
+            color: #fff;
+            border-radius: 14px;
+            padding: 10px 14px;
+            font-weight: 700;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.2);
+            backdrop-filter: blur(16px) saturate(140%);
+            -webkit-backdrop-filter: blur(16px) saturate(140%);
+            cursor: pointer;
+            transition: transform 0.18s ease, box-shadow 0.18s ease;
+        }
+        .rc-ios-btn:active { transform: translateY(1px) scale(0.99); box-shadow: 0 4px 12px rgba(0,0,0,0.18); }
+        .rc-ios-btn.secondary { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.12); }
+
+        .rc-glass-card {
+            background: rgba(20,20,28,0.55);
+            border: 1px solid rgba(255,255,255,0.1);
+            backdrop-filter: blur(18px) saturate(140%);
+            -webkit-backdrop-filter: blur(18px) saturate(140%);
+            border-radius: 18px;
+            padding: 12px 14px;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.45);
+        }
         
         /* 背景动画 blob (放在 overlay 内) */
         .chat-liquid-bg {
@@ -783,22 +837,173 @@
         .rc-title { font-size: 20px; font-weight: 700; color: #fff; letter-spacing: 0.5px; }
         .rc-status { width: 10px; height: 10px; border-radius: 50%; background: #666; margin-right: 8px; transition: background 0.3s; box-shadow: 0 0 5px rgba(0,0,0,0.3); }
         .rc-status.connected { background: #00ff88; box-shadow: 0 0 10px #00ff88; }
-        
-        /* 聊天消息区域 */
-        .rc-messages {
-            flex: 1; padding: 20px;
-            overflow-y: auto; display: flex; flex-direction: column; gap: 12px;
-            -webkit-overflow-scrolling: touch;
+
+        /* 聊天工具栏（会话 ID + 好友操作） */
+        .rc-tools {
+            padding: 12px 20px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 42vh;
+            overflow-y: auto;
         }
+        .rc-session-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 12px;
+            padding: 10px 12px;
+            color: #e9e9e9;
+            font-size: 13px;
+        }
+        .rc-session-id { font-family: monospace; font-size: 12px; opacity: 0.9; word-break: break-all; }
+        .rc-btn {
+            background: rgba(255,255,255,0.12);
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 8px 12px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: transform 0.15s ease, background 0.2s;
+        }
+        .rc-btn:active { transform: scale(0.97); background: rgba(255,255,255,0.18); }
+        .rc-friend-form {
+            display: flex;
+            gap: 8px;
+        }
+        .rc-friend-input {
+            flex: 1;
+            padding: 10px 12px;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 10px;
+            color: #fff;
+            font-size: 13px;
+        }
+        .rc-requests-box {
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 12px;
+            padding: 10px 12px;
+            background: rgba(255,255,255,0.04);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .rc-requests-title {
+            font-size: 12px;
+            color: rgba(255,255,255,0.7);
+        }
+        .rc-requests-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .rc-request-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 10px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 10px;
+            color: #fff;
+            font-size: 12px;
+        }
+        .rc-request-actions {
+            display: flex;
+            gap: 6px;
+        }
+        .rc-request-id { font-family: monospace; }
+        .rc-friends-list {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding-bottom: 6px;
+        }
+        .rc-friend-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 10px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 12px;
+            color: #fff;
+            font-size: 12px;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .rc-friend-chip.active { background: rgba(42, 171, 238, 0.3); border-color: rgba(42,171,238,0.6); }
+        .rc-friend-status { font-size: 11px; opacity: 0.8; }
+        .rc-mode-hint { font-size: 12px; color: rgba(255,255,255,0.7); padding: 0 20px 6px; }
+
+        .rc-tabs { display: flex; gap: 8px; padding: 0 20px 8px; }
+        .rc-tab {
+            flex: 1;
+            border: 1px solid rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.05);
+            color: #fff;
+            border-radius: 10px;
+            padding: 10px 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s, border-color 0.2s, transform 0.1s;
+        }
+        .rc-tab.active { background: rgba(42, 171, 238, 0.15); border-color: rgba(42, 171, 238, 0.5); }
+        .rc-tab:active { transform: scale(0.98); }
+        .rc-badge, .app-badge {
+            min-width: 18px;
+            height: 18px;
+            padding: 0 6px;
+            border-radius: 999px;
+            background: #ff5f57;
+            color: #fff;
+            font-size: 12px;
+            font-weight: 700;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+        }
+        .app-badge { position: absolute; top: -6px; right: -6px; box-shadow: 0 4px 10px rgba(0,0,0,0.35); }
+
+        /* 聊天消息区域 */
+        .rc-messages-wrap { flex: 1; display: flex; flex-direction: column; overflow: hidden; padding: 0 20px 12px; min-height: 0; }
+        .rc-messages {
+            flex: 1; padding: 16px 0 10px;
+            overflow-y: auto; display: none; flex-direction: column; gap: 12px;
+            -webkit-overflow-scrolling: touch;
+            min-height: 0;
+        }
+        .rc-messages.active { display: flex; }
         
         /* 聊天气泡 */
-        .rc-bubble {
+        .rc-bubble { 
             max-width: 80%; padding: 12px 16px;
             font-size: 15px; line-height: 1.4; color: white;
             position: relative; word-wrap: break-word;
             box-shadow: 0 2px 8px rgba(0,0,0,0.15);
             animation: rcFadeIn 0.3s ease-out;
         }
+        .rc-bubble .rc-avatar { width: 34px; height: 34px; border-radius: 12px; background: rgba(255,255,255,0.15); display: flex; align-items: center; justify-content: center; font-weight: 700; margin-right: 8px; cursor: pointer; }
+        .rc-bubble .rc-head { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; opacity: 0.8; font-size: 12px; }
+        .rc-bubble .rc-name { font-weight: 700; }
+        .rc-bubble .rc-chip { padding: 2px 6px; border-radius: 999px; background: rgba(255,255,255,0.12); font-size: 10px; }
+        .rc-bubble .rc-recall { margin-top: 6px; font-size: 12px; text-align: right; }
+        .rc-bubble .rc-recall button { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); color: #fff; padding: 4px 8px; border-radius: 10px; cursor: pointer; }
+        .rc-bubble .rc-recall button:active { transform: scale(0.96); }
+        .rc-bubble img.rc-media { max-width: 220px; border-radius: 12px; margin-top: 6px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+        audio.rc-media { width: 220px; margin-top: 6px; }
         @keyframes rcFadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         
         /* 收到的消息 */
@@ -823,6 +1028,8 @@
             font-size: 10px; opacity: 0.6; text-align: right; margin-top: 4px; color: #eee;
         }
 
+        .rc-empty { color: rgba(255,255,255,0.5); font-size: 13px; padding: 12px; text-align: center; }
+
         /* 聊天输入框区域 */
         .rc-input-area {
             padding: 15px 20px; padding-bottom: calc(20px + env(safe-area-inset-bottom));
@@ -830,6 +1037,12 @@
             border-top: 1px solid rgba(255, 255, 255, 0.05);
             display: flex; gap: 10px; align-items: center;
         }
+
+        .rc-emoji-toggle { width: 40px; height: 40px; border-radius: 12px; background: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; cursor: pointer; border: 1px solid rgba(255,255,255,0.12); }
+        .rc-emoji-panel { margin-top: 10px; display: grid; gap: 10px; }
+        .rc-emoji-row { display: flex; flex-wrap: wrap; gap: 6px; }
+        .rc-emoji-item { width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); }
+        .rc-emoji-item img { width: 100%; height: 100%; object-fit: cover; border-radius: 10px; }
         
         .rc-form {
             width: 100%; display: flex; gap: 10px;
@@ -854,6 +1067,66 @@
         }
         .rc-send-btn:active { transform: scale(0.9); background: #3cb4f0; }
         .rc-send-btn svg { width: 20px; height: 20px; fill: currentColor; margin-left: -2px; margin-top: 2px;}
+
+        @media (max-width: 640px) {
+            .chat-overlay-container {
+                padding: calc(12px + env(safe-area-inset-top)) 10px calc(14px + env(safe-area-inset-bottom));
+                justify-content: flex-start;
+                gap: 10px;
+            }
+            .rc-body { gap: 10px; }
+            .rc-header {
+                padding: 10px 10px 6px;
+                position: sticky;
+                top: 0;
+                z-index: 2;
+                backdrop-filter: blur(10px);
+                -webkit-backdrop-filter: blur(10px);
+            }
+            .rc-tools {
+                padding: 10px 10px 6px;
+                max-height: 38vh;
+                background: rgba(0,0,0,0.2);
+                border-radius: 14px;
+                border: 1px solid rgba(255,255,255,0.08);
+                overflow: auto;
+            }
+            .rc-identity { grid-template-columns: 1fr; }
+            .rc-session-row { flex-direction: column; align-items: flex-start; }
+            .rc-session-row .rc-btn { width: 100%; }
+            .rc-friend-form { width: 100%; flex-direction: column; }
+            .rc-friend-input { width: 100%; }
+            .rc-requests-box { width: 100%; padding: 10px; gap: 6px; }
+            .rc-requests-list { gap: 6px; }
+            .rc-request-row { align-items: flex-start; flex-direction: column; }
+            .rc-request-actions { width: 100%; justify-content: flex-end; }
+            .rc-mode-hint { padding: 0 10px 4px; }
+            .rc-friends-list { flex-wrap: wrap; }
+            .rc-friend-chip { width: 100%; justify-content: space-between; }
+            .rc-tabs { padding: 8px 10px; position: sticky; top: 0; z-index: 2; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+            .rc-messages-wrap { padding: 0 6px 10px; }
+            .rc-messages { padding: 12px 6px 8px; }
+            .rc-input-area { padding: 12px 12px; flex-direction: column; gap: 10px; align-items: stretch; }
+            .rc-form { flex-wrap: wrap; align-items: center; gap: 8px; }
+            .rc-emoji-toggle { order: 1; width: 46px; height: 46px; }
+            .rc-input { order: 2; flex: 1 1 100%; min-width: 0; font-size: 14px; padding: 12px 14px; }
+            .rc-ios-btn.secondary { order: 3; flex: 1 1 calc(50% - 6px); text-align: center; }
+            #rc-voice-btn { order: 4; }
+            .rc-send-btn { order: 5; width: 46px; height: 46px; margin-left: auto; }
+            .rc-emoji-panel { width: 100%; }
+            .rc-bubble { font-size: 14px; max-width: 92%; }
+            .rc-bubble .rc-head { flex-wrap: wrap; }
+        }
+
+        @media (max-width: 480px) {
+            .chat-overlay-container { padding: calc(10px + env(safe-area-inset-top)) 8px calc(12px + env(safe-area-inset-bottom)); }
+            .rc-title { font-size: 18px; }
+            .rc-tools { max-height: 44vh; }
+            .rc-tab { font-size: 13px; padding: 10px 8px; }
+            .rc-mode-hint { font-size: 11px; }
+            .rc-bubble img.rc-media { max-width: 100%; }
+            audio.rc-media { width: 100%; }
+        }
 
         /* === NEW: Camera App Styles === */
         .camera-overlay-container {
@@ -1083,6 +1356,7 @@
                 <!-- NEW: Real-time Chat App -->
                 <div class="app-icon" onclick="openChatApp()">
                     <div class="icon-box" style="background: linear-gradient(135deg, #2aabee 0%, #0077b5 100%); border:none;">
+                        <span class="app-badge" id="chat-app-badge"></span>
                         <svg viewBox="0 0 24 24" style="fill: #fff; stroke: none;"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path></svg>
                     </div>
                     <span class="app-name">聊天室</span>
@@ -1298,23 +1572,67 @@
             </div>
             <div style="display:flex;align-items:center;">
                 <div class="rc-status" id="rc-status-dot"></div>
-                <div class="rc-title">Realtime Chat</div>
+                <div class="rc-title" id="rc-title">Realtime Chat</div>
             </div>
             <div style="width:40px;"></div> <!-- Spacer -->
         </div>
-        <div class="rc-messages" id="rc-messages">
-            <div class="rc-bubble received">
-                欢迎来到公共聊天室。<br>所有在此发送的消息均为匿名。
-                <div class="rc-meta">System</div>
+        <div class="rc-body">
+            <div class="rc-tools">
+                <div class="rc-identity">
+                    <div class="rc-identity-card">
+                        <div class="rc-identity-title">当前身份</div>
+                        <div class="rc-identity-value" id="rc-identity-type">游客</div>
+                        <button class="rc-ios-btn" type="button" onclick="openLogin()">使用 KangQi 账户登录</button>
+                    </div>
+                    <div class="rc-identity-card">
+                        <div class="rc-identity-title">设备与位置</div>
+                        <div class="rc-identity-value" id="rc-device-info">检测中…</div>
+                        <div class="rc-identity-title" id="rc-location-info">中国四川</div>
+                    </div>
+                </div>
+                <div class="rc-session-row">
+                    <span>我的 Session ID：</span>
+                    <span class="rc-session-id" id="rc-session-id">未连接</span>
+                    <button class="rc-btn" type="button" onclick="copySessionId()">复制</button>
+                </div>
+                <form class="rc-friend-form" id="rc-friend-form">
+                    <input id="rc-friend-input" type="text" class="rc-friend-input" autocomplete="off" placeholder="输入好友 Session ID" />
+                    <button class="rc-btn" type="submit">加好友</button>
+                </form>
+                <div class="rc-requests-box">
+                    <div class="rc-requests-title">好友请求</div>
+                    <div class="rc-requests-list" id="rc-requests"></div>
+                </div>
+                <div class="rc-mode-hint" id="rc-mode-hint">当前模式：公共聊天室</div>
+                <div class="rc-friends-list" id="rc-friends-list"></div>
+            </div>
+            <div class="rc-tabs">
+                <button class="rc-tab active" data-tab="public">公共频道 <span class="rc-badge" id="rc-badge-public"></span></button>
+                <button class="rc-tab" data-tab="private">私聊 <span class="rc-badge" id="rc-badge-private"></span></button>
+            </div>
+            <div class="rc-messages-wrap">
+                <div class="rc-messages active" id="rc-public-messages"></div>
+                <div class="rc-messages" id="rc-private-messages">
+                    <div class="rc-empty">请选择好友开始私聊</div>
+                </div>
             </div>
         </div>
         <div class="rc-input-area">
             <form id="rc-form" class="rc-form">
+                <div class="rc-emoji-toggle" onclick="toggleEmojiPanel()">😊</div>
                 <input id="rc-input" type="text" class="rc-input" autocomplete="off" placeholder="输入消息..." />
+                <input type="file" id="rc-image-input" accept="image/*" style="display:none;" />
+                <button type="button" class="rc-ios-btn secondary" onclick="document.getElementById('rc-image-input').click()">图片</button>
+                <button type="button" class="rc-ios-btn secondary" onclick="toggleVoiceRecord()" id="rc-voice-btn">语音</button>
                 <button type="submit" class="rc-send-btn">
                     <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path></svg>
                 </button>
             </form>
+            <div class="rc-emoji-panel rc-glass-card" id="rc-emoji-panel" style="display:none;">
+                <div class="rc-emoji-row" id="rc-emoji-basic"></div>
+                <div class="rc-emoji-row" id="rc-emoji-doro"></div>
+                <div class="rc-emoji-row" id="rc-emoji-nailong"></div>
+            </div>
         </div>
     </div>
 
@@ -2462,95 +2780,993 @@
         }
 
         /* --- Real-time Chat Logic (Client) --- */
-        // IMPORTANT: CHANGE THIS URL TO YOUR BAOTA NODE.JS SERVER URL (E.g. https://chat.kangqiovo.com)
-        // IF RUNNING LOCALLY, use http://localhost:3000
-        // Currently defaulted to Auto-Detect or specify full URL
-        const CHAT_SERVER_URL = ""; // 如果你的HTML与Socket.io服务器不是同域，请填完整URL, 例如: "https://your-socket-server.com"
-        
+        // 聊天依赖 Socket.IO 服务，默认优先使用同域服务，可通过 window.CHAT_SERVER_URL 指定完整端点。
+        // 连接方式恢复为首个版本：如果未配置则直接调用 io()，以当前页面域名为服务端。
+        const CHAT_SERVER_URL = window.CHAT_SERVER_URL || "";
+        const OAUTH_CLIENT_ID = 'JydofimGaU2UwoIai4bIGFdcLj9HrwRCjPcYGXeo';
+        const FRIENDS_STORAGE_KEY = 'kq_chat_friends';
+        const REQUESTS_STORAGE_KEY = 'kq_chat_requests';
+
+        const baseSessionId = generateUAHash(navigator.userAgent || '');
         let socket;
         let isChatConnected = false;
-        
+        let identity = { type: 'guest', displayName: `游客-${baseSessionId.slice(0,4)}`, id: baseSessionId };
+        let mySessionId = identity.id;
+        let currentChatTarget = null;
+        let userLocation = '中国四川';
+        let deviceHint = navigator.userAgent;
+        const friends = new Map(); // { id: { status: 'pending'|'accepted'|'rejected', direction: 'outgoing'|'incoming' } }
+        const incomingRequests = new Set();
+        let friendFormBound = false;
+        let isChatVisible = false;
+        let activeTab = 'public';
+        const publicMessages = [];
+        const privateMessages = new Map(); // peerId -> []
+        const messageIndex = new Map();
+        const userDirectory = new Map();
+        let mediaRecorder = null;
+        let recordedChunks = [];
+        let unreadPublic = 0;
+        const unreadPrivate = new Map();
+
+        function persistFriends() {
+            try {
+                localStorage.setItem(FRIENDS_STORAGE_KEY, JSON.stringify(Array.from(friends.entries())));
+            } catch (e) {
+                console.warn('无法保存好友列表', e);
+            }
+        }
+
+        function persistIncomingRequests() {
+            try {
+                localStorage.setItem(REQUESTS_STORAGE_KEY, JSON.stringify(Array.from(incomingRequests)));
+            } catch (e) {
+                console.warn('无法保存好友请求', e);
+            }
+        }
+
+        function loadPersistedState() {
+            try {
+                const rawFriends = localStorage.getItem(FRIENDS_STORAGE_KEY);
+                if (rawFriends) {
+                    JSON.parse(rawFriends).forEach(([id, info]) => friends.set(id, info));
+                }
+            } catch (e) {
+                console.warn('好友列表读取失败', e);
+            }
+
+            try {
+                const rawReq = localStorage.getItem(REQUESTS_STORAGE_KEY);
+                if (rawReq) {
+                    JSON.parse(rawReq).forEach((id) => incomingRequests.add(id));
+                }
+            } catch (e) {
+                console.warn('好友请求读取失败', e);
+            }
+        }
+
+        loadPersistedState();
+
+        function detectDeviceInfo() {
+            const ua = navigator.userAgent || '';
+            let os = '设备未知';
+            if (/Android (\d+[\.\d+]*)/i.test(ua)) os = `安卓${RegExp.$1}`;
+            if (/MIUI[\s\/](\d+[\.\d+]*)/i.test(ua)) os = `MIUI${RegExp.$1}`;
+            if (/iPhone OS (\d+_\d+)/i.test(ua)) os = `iOS${RegExp.$1.replace('_','.')}`;
+            if (/HarmonyOS\s?(\d+[\.\d+]*)/i.test(ua)) os = `鸿蒙${RegExp.$1}`;
+            if (/Hmui\s?(\d+[\.\d+]*)/i.test(ua)) os = `澎湃${RegExp.$1}`;
+            if (/Ubuntu\/(\d+\.\d+)/i.test(ua)) os = `Linux乌班图${RegExp.$1}`;
+            deviceHint = os;
+            const deviceEl = document.getElementById('rc-device-info');
+            if (deviceEl) deviceEl.textContent = os;
+        }
+
+        async function fetchIPLocation() {
+            try {
+                const res = await fetch('https://ipapi.co/json/');
+                const data = await res.json();
+                if (data?.region) {
+                    userLocation = `中国${data.region}`;
+                }
+            } catch (e) {
+                userLocation = '中国四川';
+            }
+            const locEl = document.getElementById('rc-location-info');
+            if (locEl) locEl.textContent = userLocation;
+        }
+
+        function parseOAuthHash() {
+            if (!window.location.hash) return null;
+            const params = new URLSearchParams(window.location.hash.slice(1));
+            const token = params.get('access_token') || params.get('id_token');
+            if (!token) return null;
+            const base = token.split('.')[1];
+            let sub = '';
+            try {
+                const json = JSON.parse(atob(base));
+                sub = json.sub || '';
+            } catch (e) {
+                sub = token.slice(0, 8);
+            }
+            return { token, sub };
+        }
+
+        function applyOAuthIdentity() {
+            const oauth = parseOAuthHash();
+            if (!oauth) return;
+            identity = {
+                type: 'member',
+                displayName: `KangQi用户-${oauth.sub?.slice(0,6) || baseSessionId.slice(0,4)}`,
+                id: baseSessionId
+            };
+            mySessionId = identity.id;
+            updateIdentityUI();
+            window.location.hash = '';
+        }
+
+        function updateIdentityUI() {
+            const typeEl = document.getElementById('rc-identity-type');
+            if (typeEl) typeEl.textContent = identity.type === 'member' ? '登录用户（KangQi）' : '游客';
+            const sessionEl = document.getElementById('rc-session-id');
+            if (sessionEl) sessionEl.textContent = mySessionId;
+        }
+
+        function openLogin() {
+            const redirect = encodeURIComponent(window.location.href.split('#')[0]);
+            const url = `https://auth.kangqiovo.com/oauth/authorize?client_id=${OAUTH_CLIENT_ID}&response_type=token&redirect_uri=${redirect}&scope=openid%20profile&state=chat`;
+            window.location.href = url;
+        }
+
+        function switchToGuest() {
+            identity = { type: 'guest', displayName: `游客-${baseSessionId.slice(0,4)}`, id: baseSessionId };
+            mySessionId = identity.id;
+            updateIdentityUI();
+            if (socket) { socket.disconnect(); socket = null; isChatConnected = false; }
+        }
+
+        detectDeviceInfo();
+        fetchIPLocation();
+        applyOAuthIdentity();
+
         window.openChatApp = function() {
             document.body.classList.add('chat-open');
+            isChatVisible = true;
+            switchTab(activeTab);
             if(!isChatConnected) initSocketConnection();
             setTimeout(() => document.getElementById('rc-input').focus(), 300);
+            markCurrentViewRead();
         }
-        
+
         window.closeChatApp = function() {
             document.body.classList.remove('chat-open');
+            isChatVisible = false;
         }
 
         function initSocketConnection() {
+            if (isChatConnected) return;
+
+            // 如果已有 socket 实例但未连接，直接尝试重连即可
+            if (socket) {
+                addChatBubble('正在重新连接聊天室…', false, { isPrivate: false });
+                socket.connect();
+                return;
+            }
+
+            const statusDot = document.getElementById('rc-status-dot');
+            addChatBubble('正在连接聊天室，请稍候…', false, { isPrivate: false });
+
+            const socketOptions = {
+                auth: { sessionId: mySessionId, userType: identity.type === 'member' ? 'member' : 'guest', displayName: identity.displayName, location: userLocation, deviceInfo: deviceHint },
+                query: { sessionId: mySessionId, userType: identity.type === 'member' ? 'member' : 'guest', displayName: identity.displayName, location: userLocation, deviceInfo: deviceHint },
+                reconnection: true,
+                reconnectionAttempts: 8,
+                reconnectionDelay: 500,
+                reconnectionDelayMax: 2000,
+                autoConnect: true,
+                transports: ['websocket', 'polling']
+            };
+
             try {
-                // If url is empty, it uses current domain (good for hosting html+server together)
-                socket = CHAT_SERVER_URL ? io(CHAT_SERVER_URL) : io();
-                
-                const statusDot = document.getElementById('rc-status-dot');
-                
-                socket.on('connect', () => {
-                    console.log('Chat Connected');
-                    isChatConnected = true;
-                    if(statusDot) statusDot.classList.add('connected');
-                });
-                
-                socket.on('disconnect', () => {
-                    console.log('Chat Disconnected');
-                    if(statusDot) statusDot.classList.remove('connected');
-                });
-                
-                socket.on('chat message', (msg) => {
-                    // Check if message is mine to decide style
-                    const isMe = msg.id === socket.id;
-                    addChatBubble(msg.text, isMe);
-                });
-                
-                // Form handling
-                const form = document.getElementById('rc-form');
-                const input = document.getElementById('rc-input');
-                
-                form.addEventListener('submit', (e) => {
-                    e.preventDefault();
-                    if (input.value) {
-                        socket.emit('chat message', input.value);
-                        input.value = '';
+                // 如果没有自定义地址，io() 将使用当前页面域名作为 Socket 服务端
+                socket = CHAT_SERVER_URL ? io(CHAT_SERVER_URL, socketOptions) : io(socketOptions);
+            } catch (err) {
+                console.error('Socket 创建失败:', err);
+                addChatBubble('无法创建 Socket 连接，请检查服务端是否正常。', false, { isPrivate: false });
+                socket = null;
+                return;
+            }
+
+            bindSocketEvents(socket, statusDot);
+        }
+
+        function bindSocketEvents(activeSocket, statusDot) {
+            activeSocket.on('connect', () => {
+                isChatConnected = true;
+                if (statusDot) statusDot.classList.add('connected');
+                updateSessionUI();
+            });
+
+            activeSocket.io.on('reconnect', () => {
+                isChatConnected = true;
+                if (statusDot) statusDot.classList.add('connected');
+                updateSessionUI();
+                addChatBubble('已重新连接聊天室。', false, { isPrivate: false });
+            });
+
+            activeSocket.on('disconnect', () => {
+                console.log('Chat Disconnected');
+                if(statusDot) statusDot.classList.remove('connected');
+                isChatConnected = false;
+                updateSessionUI();
+                addChatBubble('连接已断开，正在尝试重新连接…', false, { isPrivate: false });
+                // 交给 Socket.IO 自动重连；若失败，稍后手动触发 connect
+                setTimeout(() => { if (activeSocket && !activeSocket.connected) activeSocket.connect(); }, 800);
+            });
+
+            activeSocket.io.on('error', (err) => {
+                console.error('Socket transport error:', err);
+                addChatBubble('连接异常，请确认服务器地址可访问且已启用 HTTPS。', false, { isPrivate: false });
+            });
+
+            activeSocket.on('connect_error', (err) => {
+                console.error('连接失败:', err);
+                addChatBubble('连接失败，请确认 Socket.IO 服务端地址正确且已启动。', false, { isPrivate: false });
+            });
+
+            activeSocket.on('session info', ({ id, userType, displayName, deviceInfo, location }) => {
+                mySessionId = id;
+                identity.type = userType || identity.type;
+                identity.displayName = displayName || identity.displayName;
+                if (deviceInfo) deviceHint = deviceInfo;
+                if (location) userLocation = location;
+                updateIdentityUI();
+                updateSessionUI();
+            });
+
+            activeSocket.on('public message', (msg) => {
+                handleIncomingMessage(msg, false);
+            });
+
+            // 兼容旧服务端事件名称
+            activeSocket.on('chat message', (text) => {
+                const isMe = false; // 缺少 ID，作为公共消息处理
+                addChatBubble(text, isMe, { isPrivate: false });
+            });
+
+            activeSocket.on('private message', (msg) => {
+                handleIncomingMessage(msg, true);
+            });
+
+            activeSocket.on('chat history', ({ messages = [] }) => {
+                messages.forEach((m) => handleIncomingMessage(m, m.channel === 'private'));
+            });
+
+            activeSocket.on('message recalled', ({ messageId }) => {
+                markMessageRecalled(messageId);
+            });
+
+            activeSocket.on('quota exceeded', () => {
+                addChatBubble('游客每日仅可发送10条消息，请登录 KangQi 账户继续畅聊。', false, { isPrivate: false });
+            });
+
+            activeSocket.on('friend request received', ({ from }) => {
+                if (friends.get(from)?.status === 'accepted') {
+                    addChatBubble(`${from} 已在好友列表中，可直接私聊。`, false, { isPrivate: true, peerId: from });
+                    setActiveFriend(from);
+                    renderFriends();
+                    return;
+                }
+                incomingRequests.add(from);
+                friends.set(from, { status: 'pending', direction: 'incoming' });
+                persistIncomingRequests();
+                persistFriends();
+                renderFriends();
+                renderFriendRequests();
+                addChatBubble(`收到来自 ${from} 的好友请求，请选择同意或拒绝。`, false, { isPrivate: false });
+            });
+
+            activeSocket.on('pending friend requests', ({ fromIds = [] }) => {
+                incomingRequests.clear();
+                fromIds.forEach((from) => {
+                    incomingRequests.add(from);
+                    const existing = friends.get(from);
+                    if (!existing || existing.status !== 'accepted') {
+                        friends.set(from, { status: 'pending', direction: 'incoming' });
                     }
                 });
-                
-            } catch(e) {
-                console.error("Socket Init Failed:", e);
-                const container = document.getElementById('rc-messages');
-                container.innerHTML += `<div style="text-align:center;color:#f55;font-size:12px;margin-top:10px;">Connection Failed: Is backend running?</div>`;
+                persistIncomingRequests();
+                persistFriends();
+                renderFriends();
+                renderFriendRequests();
+            });
+
+            activeSocket.on('friend response received', ({ from, accepted }) => {
+                if (accepted) {
+                    friends.set(from, { status: 'accepted', direction: 'outgoing' });
+                    setActiveFriend(from, true);
+                    incomingRequests.delete(from);
+                    persistIncomingRequests();
+                    persistFriends();
+                    renderFriends();
+                    renderFriendRequests();
+                    addChatBubble(`${from} 已接受你的好友请求，现在进入私聊模式。`, false, { isPrivate: true, peerId: from });
+                } else {
+                    friends.set(from, { status: 'rejected', direction: 'outgoing' });
+                    incomingRequests.delete(from);
+                    persistIncomingRequests();
+                    persistFriends();
+                    renderFriends();
+                    renderFriendRequests();
+                    addChatBubble(`${from} 拒绝了你的好友请求。`, false, { isPrivate: false });
+                }
+            });
+
+            activeSocket.on('request sent', ({ success, msg, to }) => {
+                if (!success) {
+                    addChatBubble(msg || '发送好友请求失败', false, { isPrivate: false });
+                    friends.delete(to);
+                    persistFriends();
+                    renderFriends();
+                    return;
+                }
+                addChatBubble(`已向 ${to} 发送好友请求，等待对方通过。`, true, { isPrivate: false });
+            });
+
+            // Form handling
+            const form = document.getElementById('rc-form');
+            const input = document.getElementById('rc-input');
+
+            form.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const text = input.value.trim();
+                if (!text) return;
+
+                if (!activeSocket.connected) {
+                    addChatBubble('未连接到聊天室，正在尝试重新连接…', false, { isPrivate: false });
+                    activeSocket.connect();
+                    return;
+                }
+
+                if (activeTab === 'private' && !currentChatTarget) {
+                    addChatBubble('请选择好友后再开始私聊。', false, { isPrivate: true });
+                    input.value = '';
+                    return;
+                }
+
+                if (currentChatTarget) {
+                    activeSocket.emit('private message', { payload: { type: 'text', text }, to: currentChatTarget });
+                    addChatBubble(text, true, { isPrivate: true, peerId: currentChatTarget });
+                } else {
+                    activeSocket.emit('public message', { payload: { type: 'text', text } });
+                }
+
+                input.value = '';
+            });
+
+            const imageInput = document.getElementById('rc-image-input');
+            if (imageInput) {
+                imageInput.addEventListener('change', handleImageUpload);
+            }
+            populateEmojis();
+            initVoice();
+
+            bindFriendForm();
+        }
+
+        function bindFriendForm() {
+            if (friendFormBound) return;
+            const friendForm = document.getElementById('rc-friend-form');
+            const friendInput = document.getElementById('rc-friend-input');
+
+            friendForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const targetId = friendInput.value.trim();
+                if (!targetId) return;
+                if (!socket || !isChatConnected) {
+                    addChatBubble('请先连接聊天室后再添加好友。', false, { isPrivate: false });
+                    return;
+                }
+                if (targetId === mySessionId) {
+                    addChatBubble('不能添加自己为好友。', false, { isPrivate: false });
+                    return;
+                }
+                if (friends.has(targetId) && friends.get(targetId).status !== 'rejected') {
+                    addChatBubble('已向该用户发送或建立好友关系。', false, { isPrivate: false });
+                    return;
+                }
+
+                friends.set(targetId, { status: 'pending', direction: 'outgoing' });
+                renderFriends();
+                renderFriendRequests();
+                persistFriends();
+                socket.emit('friend request', { to: targetId });
+                friendInput.value = '';
+            });
+
+            friendFormBound = true;
+        }
+
+        function setActiveFriend(friendId, force = false) {
+            if (!force && currentChatTarget === friendId) {
+                currentChatTarget = null;
+            } else {
+                currentChatTarget = friendId;
+            }
+            activeTab = currentChatTarget ? 'private' : 'public';
+            switchTab(activeTab);
+            if (currentChatTarget) markPrivateRead(currentChatTarget);
+            updateModeUI();
+            renderFriends();
+        }
+
+        function switchTab(tab) {
+            activeTab = tab === 'private' ? 'private' : 'public';
+            document.querySelectorAll('.rc-tab').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.tab === activeTab);
+            });
+            const publicBox = document.getElementById('rc-public-messages');
+            const privateBox = document.getElementById('rc-private-messages');
+            if (!publicBox || !privateBox) return;
+
+            if (activeTab === 'public') {
+                publicBox.classList.add('active');
+                privateBox.classList.remove('active');
+                renderPublicMessages();
+                markPublicRead();
+            } else {
+                publicBox.classList.remove('active');
+                privateBox.classList.add('active');
+                renderPrivateMessages(currentChatTarget);
+                if (currentChatTarget) markPrivateRead(currentChatTarget);
+            }
+            updateModeUI();
+            updateBadges();
+        }
+
+        function bindTabs() {
+            document.querySelectorAll('.rc-tab').forEach(btn => {
+                btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+            });
+        }
+
+        function updateModeUI() {
+            const hint = document.getElementById('rc-mode-hint');
+            const title = document.getElementById('rc-title');
+            if (!hint || !title) return;
+            if (activeTab === 'private') {
+                title.textContent = 'Private Chat';
+                if (currentChatTarget) {
+                    hint.textContent = `当前模式：与 ${currentChatTarget} 私聊`;
+                } else {
+                    hint.textContent = '当前模式：私聊，请先选择好友';
+                }
+            } else {
+                title.textContent = 'Realtime Chat';
+                hint.textContent = '当前模式：公共聊天室';
             }
         }
-        
-        function addChatBubble(text, isSent) {
-            const container = document.getElementById('rc-messages');
+
+        function renderFriends() {
+            const container = document.getElementById('rc-friends-list');
+            if (!container) return;
+            container.innerHTML = '';
+
+            if (friends.size === 0) {
+                container.innerHTML = '<span style="color: rgba(255,255,255,0.5); font-size:12px;">暂无好友，添加后可私聊</span>';
+                return;
+            }
+
+            friends.forEach((info, id) => {
+                const chip = document.createElement('div');
+                chip.className = 'rc-friend-chip' + (currentChatTarget === id ? ' active' : '');
+                chip.innerHTML = `<span>${id}</span><span class="rc-friend-status">${info.status === 'accepted' ? '已通过' : info.status === 'rejected' ? '已拒绝' : '待确认'}</span>`;
+                chip.onclick = () => {
+                    if (info.status === 'accepted') {
+                        setActiveFriend(id);
+                    }
+                };
+                container.appendChild(chip);
+            });
+        }
+
+        function renderFriendRequests() {
+            const container = document.getElementById('rc-requests');
+            if (!container) return;
+            container.innerHTML = '';
+
+            if (incomingRequests.size === 0) {
+                container.innerHTML = '<span style="color: rgba(255,255,255,0.5); font-size:12px;">暂无待处理的好友请求</span>';
+                return;
+            }
+
+            incomingRequests.forEach((id) => {
+                const row = document.createElement('div');
+                row.className = 'rc-request-row';
+
+                const info = document.createElement('div');
+                info.className = 'rc-request-id';
+                info.textContent = id;
+
+                const actions = document.createElement('div');
+                actions.className = 'rc-request-actions';
+
+                const acceptBtn = document.createElement('button');
+                acceptBtn.className = 'rc-btn';
+                acceptBtn.textContent = '同意';
+                acceptBtn.onclick = () => respondToFriendRequest(id, true);
+
+                const rejectBtn = document.createElement('button');
+                rejectBtn.className = 'rc-btn';
+                rejectBtn.textContent = '拒绝';
+                rejectBtn.onclick = () => respondToFriendRequest(id, false);
+
+                actions.appendChild(acceptBtn);
+                actions.appendChild(rejectBtn);
+
+                row.appendChild(info);
+                row.appendChild(actions);
+
+                container.appendChild(row);
+            });
+        }
+
+        function respondToFriendRequest(friendId, accepted) {
+            if (!socket || !isChatConnected) {
+                addChatBubble('请先连接聊天室后再处理好友请求。', false, { isPrivate: false });
+                return;
+            }
+
+            incomingRequests.delete(friendId);
+            socket.emit('friend response', { to: friendId, accepted });
+
+            if (accepted) {
+                friends.set(friendId, { status: 'accepted', direction: 'incoming' });
+                setActiveFriend(friendId, true);
+                addChatBubble(`已接受 ${friendId} 的好友请求，现在可以开始私聊。`, false, { isPrivate: true, peerId: friendId });
+            } else {
+                friends.set(friendId, { status: 'rejected', direction: 'incoming' });
+                addChatBubble(`你拒绝了来自 ${friendId} 的好友请求。`, false, { isPrivate: false });
+            }
+
+            renderFriends();
+            renderFriendRequests();
+            persistFriends();
+            persistIncomingRequests();
+        }
+
+        function updateSessionUI() {
+            const sessionEl = document.getElementById('rc-session-id');
+            if (sessionEl) sessionEl.textContent = mySessionId || '未连接';
+        }
+
+        function copySessionId() {
+            if (!mySessionId) return;
+            navigator.clipboard?.writeText(mySessionId).then(() => {
+                addChatBubble('Session ID 已复制。', true, { isPrivate: false });
+            }).catch(() => {
+                addChatBubble('复制失败，请手动选择文本。', false, { isPrivate: false });
+            });
+        }
+
+        function markPublicRead() {
+            unreadPublic = 0;
+        }
+
+        function markPrivateRead(peerId) {
+            if (!peerId) return;
+            unreadPrivate.set(peerId, 0);
+        }
+
+        function markCurrentViewRead() {
+            if (!isChatVisible) return;
+            if (activeTab === 'public') {
+                markPublicRead();
+            } else if (currentChatTarget) {
+                markPrivateRead(currentChatTarget);
+            }
+            updateBadges();
+        }
+
+        function incrementPrivateUnread(peerId) {
+            if (!peerId) return;
+            const count = unreadPrivate.get(peerId) || 0;
+            unreadPrivate.set(peerId, count + 1);
+        }
+
+        function getPrivateUnreadTotal() {
+            return Array.from(unreadPrivate.values()).reduce((sum, v) => sum + v, 0);
+        }
+
+        function updateBadges() {
+            const publicBadge = document.getElementById('rc-badge-public');
+            const privateBadge = document.getElementById('rc-badge-private');
+            const appBadge = document.getElementById('chat-app-badge');
+            const totalPrivateUnread = getPrivateUnreadTotal();
+
+            if (publicBadge) {
+                publicBadge.style.display = unreadPublic > 0 ? 'inline-flex' : 'none';
+                publicBadge.textContent = unreadPublic;
+            }
+            if (privateBadge) {
+                privateBadge.style.display = totalPrivateUnread > 0 ? 'inline-flex' : 'none';
+                privateBadge.textContent = totalPrivateUnread;
+            }
+            if (appBadge) {
+                const total = unreadPublic + totalPrivateUnread;
+                appBadge.style.display = total > 0 ? 'inline-flex' : 'none';
+                appBadge.textContent = total;
+            }
+        }
+
+        function ensurePrivateBucket(peerId) {
+            if (!privateMessages.has(peerId)) {
+                privateMessages.set(peerId, []);
+            }
+        }
+
+        function buildBubble(record) {
+            const { payload = { type: 'text', text: '' }, isSent, channel, peerId, timestamp, from, meta = {}, id, recalled } = record;
             const div = document.createElement('div');
-            
-            // 使用 CSS 定义的 rc-bubble 样式，避免和 AI 的 bubble 冲突
             div.className = isSent ? 'rc-bubble sent' : 'rc-bubble received';
-            
-            const now = new Date();
-            const timeStr = now.getHours() + ":" + String(now.getMinutes()).padStart(2, '0');
-            
-            div.innerHTML = `${escapeHtml(text)} <div class="rc-meta">${timeStr}</div>`;
-            container.appendChild(div);
+            div.dataset.mid = id;
+
+            const head = document.createElement('div');
+            head.className = 'rc-head';
+            const avatar = document.createElement('div');
+            avatar.className = 'rc-avatar';
+            avatar.textContent = (meta.displayName || from || '用户').slice(0, 2);
+            avatar.onclick = () => openProfileCard(from, meta);
+            head.appendChild(avatar);
+            const name = document.createElement('div');
+            name.className = 'rc-name';
+            name.textContent = meta.displayName || from;
+            head.appendChild(name);
+            const chip = document.createElement('span');
+            chip.className = 'rc-chip';
+            chip.textContent = (meta.userType === 'member' ? '登录' : '游客') + ' · ' + (meta.location || '中国四川');
+            head.appendChild(chip);
+            div.appendChild(head);
+
+            const content = document.createElement('div');
+            if (recalled || payload.type === 'recalled') {
+                content.textContent = '消息已撤回';
+            } else if (payload.type === 'image') {
+                const img = document.createElement('img');
+                img.src = payload.data;
+                img.alt = '图片';
+                img.className = 'rc-media';
+                content.appendChild(img);
+            } else if (payload.type === 'audio') {
+                const audio = document.createElement('audio');
+                audio.controls = true;
+                audio.src = payload.data;
+                audio.className = 'rc-media';
+                content.appendChild(audio);
+            } else {
+                content.textContent = payload.text || '';
+            }
+            div.appendChild(content);
+
+            const ts = timestamp ? new Date(timestamp) : new Date();
+            const metaLine = document.createElement('div');
+            metaLine.className = 'rc-meta';
+            metaLine.textContent = `${record.channel === 'private' ? '私聊' : '公共'} · ${peerId || ''} · ${ts.getHours()}:${String(ts.getMinutes()).padStart(2,'0')}`;
+            div.appendChild(metaLine);
+
+            if (isSent && Date.now() - ts.getTime() < 2 * 60 * 1000 && !recalled) {
+                const recall = document.createElement('div');
+                recall.className = 'rc-recall';
+                const btn = document.createElement('button');
+                btn.textContent = '撤回';
+                btn.onclick = () => recallMessage(id, record.channel === 'private' ? peerId : null);
+                recall.appendChild(btn);
+                div.appendChild(recall);
+            }
+            return div;
+        }
+
+        function renderPublicMessages() {
+            const container = document.getElementById('rc-public-messages');
+            if (!container) return;
+            container.innerHTML = '';
+            if (!publicMessages.length) {
+                container.innerHTML = '<div class="rc-empty">暂无公共聊天内容</div>';
+                return;
+            }
+            publicMessages.forEach(msg => container.appendChild(buildBubble(msg)));
             container.scrollTop = container.scrollHeight;
         }
+
+        function renderPrivateMessages(peerId) {
+            const container = document.getElementById('rc-private-messages');
+            if (!container) return;
+            container.innerHTML = '';
+
+            if (!peerId) {
+                container.innerHTML = '<div class="rc-empty">请选择好友开始私聊</div>';
+                return;
+            }
+
+            const list = privateMessages.get(peerId) || [];
+            if (!list.length) {
+                container.innerHTML = '<div class="rc-empty">暂无与该好友的聊天记录</div>';
+                return;
+            }
+            list.forEach(msg => container.appendChild(buildBubble(msg)));
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function handleIncomingMessage(msg, isPrivateEvent = false) {
+            if (!msg) return;
+            const payload = msg.payload || { type: msg.type || 'text', text: msg.text || msg.content || '' };
+            const channel = msg.channel || (isPrivateEvent ? 'private' : 'public');
+            const peerId = channel === 'private'
+                ? (msg.from === mySessionId ? msg.to : (msg.from || msg.peerId))
+                : (msg.from || msg.id || '未知');
+            const record = {
+                id: msg.id || `${Date.now()}-${Math.random().toString(16).slice(2, 6)}`,
+                from: msg.from || '未知',
+                to: msg.to || null,
+                channel,
+                peerId,
+                payload,
+                meta: msg.meta || { displayName: msg.username || msg.from || '匿名', userType: msg.userType || 'guest', location: msg.location || userLocation, deviceInfo: msg.deviceInfo || deviceHint },
+                timestamp: msg.timestamp || Date.now(),
+                recalled: msg.recalled,
+                isSent: (msg.from || msg.id) === mySessionId
+            };
+            userDirectory.set(record.from, {
+                id: record.from,
+                displayName: record.meta.displayName,
+                location: record.meta.location || userLocation,
+                device: record.meta.deviceInfo || deviceHint,
+                userType: record.meta.userType,
+            });
+
+            messageIndex.set(record.id, record);
+            if (channel === 'private') {
+                ensurePrivateBucket(record.peerId || '未知');
+                privateMessages.get(record.peerId || '未知').push(record);
+                const shouldRender = isChatVisible && activeTab === 'private' && currentChatTarget === record.peerId;
+                if (shouldRender) {
+                    renderPrivateMessages(record.peerId);
+                } else {
+                    incrementPrivateUnread(record.peerId || '未知');
+                }
+            } else {
+                publicMessages.push(record);
+                const shouldRender = isChatVisible && activeTab === 'public';
+                if (shouldRender) {
+                    renderPublicMessages();
+                } else {
+                    unreadPublic += 1;
+                }
+            }
+            updateBadges();
+        }
+
+        function addChatBubble(text, isSent, { isPrivate = false, peerId = '' } = {}) {
+            handleIncomingMessage({
+                payload: { type: 'text', text },
+                from: isSent ? mySessionId : peerId || 'System',
+                to: isPrivate ? (peerId || currentChatTarget) : null,
+                channel: isPrivate ? 'private' : 'public',
+                meta: { displayName: isSent ? identity.displayName : (peerId || '系统'), userType: isSent ? identity.type : 'system', location: userLocation, deviceInfo: deviceHint }
+            }, isPrivate);
+        }
+
+        function recallMessage(messageId, peerId) {
+            if (!socket || !isChatConnected) return;
+            socket.emit('recall message', { messageId, to: peerId });
+            markMessageRecalled(messageId);
+        }
+
+        function markMessageRecalled(messageId) {
+            const rec = messageIndex.get(messageId);
+            if (!rec) return;
+            rec.recalled = true;
+            if (rec.channel === 'private') {
+                renderPrivateMessages(rec.peerId);
+            } else {
+                renderPublicMessages();
+            }
+        }
+
+        function seedWelcomeMessage() {
+            if (publicMessages.length === 0) {
+                addChatBubble('欢迎来到公共聊天室。所有在此发送的消息均为匿名。', false, { isPrivate: false, peerId: 'System' });
+                markPublicRead();
+                renderPublicMessages();
+            }
+        }
+
+        // 初始化基础展示
+        bindTabs();
+        seedWelcomeMessage();
+        renderFriends();
+        renderFriendRequests();
+        switchTab(activeTab);
+        updateModeUI();
+        updateSessionUI();
+        updateBadges();
 
         function escapeHtml(text) {
             const map = {'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#039;'};
             return text.replace(/[&<>"']/g, function(m) { return map[m]; });
         }
 
+        function openProfileCard(id, meta = {}) {
+            let sheet = document.getElementById('rc-profile-sheet');
+            if (!sheet) {
+                sheet = document.createElement('div');
+                sheet.id = 'rc-profile-sheet';
+                sheet.className = 'rc-glass-card';
+                sheet.style.position = 'fixed';
+                sheet.style.right = '20px';
+                sheet.style.bottom = '90px';
+                sheet.style.zIndex = '999';
+                sheet.style.width = '260px';
+                document.body.appendChild(sheet);
+            }
+            sheet.innerHTML = `
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                    <div style="font-weight:700;">用户详情</div>
+                    <button class="rc-ios-btn secondary" style="padding:6px 10px;" onclick="document.getElementById('rc-profile-sheet').style.display='none'">关闭</button>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:6px;font-size:13px;">
+                    <div>Session ID：${id || '未知'}</div>
+                    <div>身份：${meta.userType === 'member' ? '登录用户' : '游客'}</div>
+                    <div>昵称：${meta.displayName || id || '匿名'}</div>
+                    <div>位置：${meta.location || userLocation}</div>
+                    <div>设备：${meta.deviceInfo || deviceHint}</div>
+                </div>
+            `;
+            sheet.style.display = 'block';
+        }
+
+        function populateEmojis() {
+            const basic = ['😀','😂','😎','😍','🤔','🥳','😭','👍','🔥'];
+            const doro = [
+                'https://img.alicdn.com/imgextra/i4/O1CN01FNdJJI1f8XzOaZuF1_!!6000000003969-2-tps-512-512.png',
+                'https://img.alicdn.com/imgextra/i2/O1CN01XqZTHr1cxR2wL671Q_!!6000000003676-2-tps-512-512.png'
+            ];
+            const nailong = [
+                'https://img.alicdn.com/imgextra/i3/O1CN01x28i6c1JMEaBDZ3qe_!!6000000000990-2-tps-512-512.png',
+                'https://img.alicdn.com/imgextra/i1/O1CN01AP4SKc1E2Y3u3U2Up_!!6000000000286-2-tps-512-512.png'
+            ];
+            const basicRow = document.getElementById('rc-emoji-basic');
+            basic?.forEach(e => {
+                const item = document.createElement('div');
+                item.className = 'rc-emoji-item';
+                item.textContent = e;
+                item.onclick = () => insertEmoji(e);
+                basicRow?.appendChild(item);
+            });
+            const doroRow = document.getElementById('rc-emoji-doro');
+            doro?.forEach(url => {
+                const item = document.createElement('div');
+                item.className = 'rc-emoji-item';
+                const img = document.createElement('img');
+                img.src = url;
+                item.appendChild(img);
+                item.onclick = () => insertSticker(url);
+                doroRow?.appendChild(item);
+            });
+            const nailongRow = document.getElementById('rc-emoji-nailong');
+            nailong?.forEach(url => {
+                const item = document.createElement('div');
+                item.className = 'rc-emoji-item';
+                const img = document.createElement('img');
+                img.src = url;
+                item.appendChild(img);
+                item.onclick = () => insertSticker(url);
+                nailongRow?.appendChild(item);
+            });
+        }
+
+        function toggleEmojiPanel() {
+            const panel = document.getElementById('rc-emoji-panel');
+            if (!panel) return;
+            panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+        }
+
+        function insertEmoji(e) {
+            const input = document.getElementById('rc-input');
+            if (input) input.value += e;
+        }
+
+        function insertSticker(url) {
+            if (!socket || !isChatConnected) {
+                addChatBubble('请先连接聊天室后再发送表情包。', false, { isPrivate: false });
+                return;
+            }
+            const payload = { type: 'image', data: url };
+            if (currentChatTarget) {
+                socket.emit('private message', { payload, to: currentChatTarget });
+                addChatBubble('[贴纸]', true, { isPrivate: true, peerId: currentChatTarget });
+            } else {
+                socket.emit('public message', { payload });
+            }
+        }
+
+        function handleImageUpload(e) {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = () => {
+                const data = reader.result;
+                const payload = { type: 'image', data };
+                if (currentChatTarget) {
+                    socket.emit('private message', { payload, to: currentChatTarget });
+                    addChatBubble('[图片]', true, { isPrivate: true, peerId: currentChatTarget });
+                } else {
+                    socket.emit('public message', { payload });
+                }
+            };
+            reader.readAsDataURL(file);
+            e.target.value = '';
+        }
+
+        function initVoice() {
+            if (!navigator.mediaDevices?.getUserMedia) return;
+        }
+
+        function toggleVoiceRecord() {
+            if (!navigator.mediaDevices?.getUserMedia) {
+                addChatBubble('当前浏览器不支持语音发送。', false, { isPrivate: false });
+                return;
+            }
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
+                return;
+            }
+            navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+                recordedChunks = [];
+                mediaRecorder = new MediaRecorder(stream);
+                mediaRecorder.ondataavailable = e => recordedChunks.push(e.data);
+                mediaRecorder.onstop = () => {
+                    const blob = new Blob(recordedChunks, { type: 'audio/webm' });
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        const payload = { type: 'audio', data: reader.result };
+                        if (currentChatTarget) {
+                            socket.emit('private message', { payload, to: currentChatTarget });
+                            addChatBubble('[语音]', true, { isPrivate: true, peerId: currentChatTarget });
+                        } else {
+                            socket.emit('public message', { payload });
+                        }
+                    };
+                    reader.readAsDataURL(blob);
+                };
+                mediaRecorder.start();
+                const btn = document.getElementById('rc-voice-btn');
+                if (btn) btn.textContent = '停止';
+                mediaRecorder.onstop = () => {
+                    if (btn) btn.textContent = '语音';
+                    const blob = new Blob(recordedChunks, { type: 'audio/webm' });
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        const payload = { type: 'audio', data: reader.result };
+                        if (currentChatTarget) {
+                            socket.emit('private message', { payload, to: currentChatTarget });
+                            addChatBubble('[语音]', true, { isPrivate: true, peerId: currentChatTarget });
+                        } else {
+                            socket.emit('public message', { payload });
+                        }
+                    };
+                    reader.readAsDataURL(blob);
+                };
+            }).catch(() => addChatBubble('无法获取麦克风权限。', false, { isPrivate: false }));
+        }
+
         /* --- Camera App Logic (New) --- */
+        const CAMERA_APP_URL = "https://camera.kangqiovo.com";
+
         window.openCameraApp = function() {
             document.body.classList.add('camera-open');
             const frame = document.getElementById('camera-frame');
-            // Lazy load the camera URL to save resources/permissions until needed
-            if (!frame.src || frame.src === 'about:blank') {
-                frame.src = "https://camera.kangqiovo.com";
-            }
+            // Always ensure the iframe points to the camera domain when opened
+            frame.src = CAMERA_APP_URL;
         }
         
         window.closeCameraApp = function() {
