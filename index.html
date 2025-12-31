@@ -1059,12 +1059,29 @@
         .rc-send-btn svg { width: 20px; height: 20px; fill: currentColor; margin-left: -2px; margin-top: 2px;}
 
         @media (max-width: 640px) {
-            .chat-overlay-container { padding: 12px 10px; }
-            .rc-header { padding: 6px 8px; }
-            .rc-tools { padding: 0 10px; max-height: 38vh; }
-            .rc-tabs { padding: 0 10px 8px; }
+            .chat-overlay-container {
+                padding: calc(12px + env(safe-area-inset-top)) 10px calc(14px + env(safe-area-inset-bottom));
+                justify-content: flex-start;
+            }
+            .rc-header {
+                padding: 10px 10px 6px;
+                position: sticky;
+                top: 0;
+                z-index: 2;
+                backdrop-filter: blur(10px);
+                -webkit-backdrop-filter: blur(10px);
+            }
+            .rc-tools {
+                padding: 6px 10px 0;
+                max-height: 36vh;
+            }
+            .rc-identity { grid-template-columns: 1fr; }
+            .rc-session-row,
+            .rc-friend-form,
+            .rc-requests-box { width: 100%; }
+            .rc-tabs { padding: 8px 10px; position: sticky; top: 60px; z-index: 2; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
             .rc-messages-wrap { padding: 0 10px 10px; }
-            .rc-input-area { padding: 12px 14px; }
+            .rc-input-area { padding: 10px 12px; }
             .rc-input { font-size: 14px; padding: 12px 14px; }
             .rc-bubble { font-size: 14px; }
         }
