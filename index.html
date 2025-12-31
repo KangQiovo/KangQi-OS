@@ -2726,9 +2726,10 @@
         const FRIENDS_STORAGE_KEY = 'kq_chat_friends';
         const REQUESTS_STORAGE_KEY = 'kq_chat_requests';
 
+        const baseSessionId = generateUAHash(navigator.userAgent || '');
         let socket;
         let isChatConnected = false;
-        let identity = { type: 'guest', displayName: `游客-${generateUAHash(navigator.userAgent || '').slice(0,4)}`, id: `guest-${generateUAHash(navigator.userAgent || '')}` };
+        let identity = { type: 'guest', displayName: `游客-${baseSessionId.slice(0,4)}`, id: baseSessionId };
         let mySessionId = identity.id;
         let currentChatTarget = null;
         let userLocation = '中国四川';
@@ -2834,8 +2835,8 @@
             if (!oauth) return;
             identity = {
                 type: 'member',
-                displayName: `KangQi用户-${oauth.sub?.slice(0,6) || '登录'}`,
-                id: `user-${oauth.sub || generateUAHash(oauth.token)}`
+                displayName: `KangQi用户-${oauth.sub?.slice(0,6) || baseSessionId.slice(0,4)}`,
+                id: baseSessionId
             };
             mySessionId = identity.id;
             updateIdentityUI();
@@ -2856,7 +2857,7 @@
         }
 
         function switchToGuest() {
-            identity = { type: 'guest', displayName: `游客-${generateUAHash(navigator.userAgent || '').slice(0,4)}`, id: `guest-${generateUAHash(navigator.userAgent || '')}` };
+            identity = { type: 'guest', displayName: `游客-${baseSessionId.slice(0,4)}`, id: baseSessionId };
             mySessionId = identity.id;
             updateIdentityUI();
             if (socket) { socket.disconnect(); socket = null; isChatConnected = false; }
