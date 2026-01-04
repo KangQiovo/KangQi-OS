@@ -7,7 +7,7 @@
     <!-- 引入 Socket.io 客户端库 (新增) -->
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <link rel="icon" href="https://os.kangqiovo.com/KangQi_OS.png" type="image/png">
-    <title>KangQiOS Dev v1.3.4</title>
+    <title>KangQiOS Dev v1.4.0</title>
     <script src="anti-crawl-plus.js"></script>
     <link rel="manifest" href="manifest.json">
     <!-- 针对 iOS Safari 的兼容性写法 (可选) -->
@@ -1432,7 +1432,7 @@
                 <!-- NEW: Phone Benchmark App -->
                 <div class="app-icon" onclick="openPerfApp()">
                     <div class="icon-box" style="background: linear-gradient(145deg, #1e2233 0%, #0d1020 100%); border:none;">
-                        <img src="KangQi_OS.png" alt="手机性能排行" style="width: 70%; height: 70%; object-fit: cover; border-radius: 12px;">
+                        <img src="sj.png" alt="手机性能排行" style="width: 70%; height: 70%; object-fit: cover; border-radius: 12px;">
                     </div>
                     <span class="app-name">性能排行</span>
                 </div>
@@ -1601,22 +1601,33 @@
                         <div class="v-row" style="margin-top:2px;"><span>Release</span><span class="v-val">2025-12-16 11:45:55</span></div>
                         <div class="v-btn" onclick="window.open('/')">
                             <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-                            查看详情
+                            暂无日志
                      </div>
                      </div>
                      <!-- New Version Entry -->
                      <div class="version-item">
                         <div class="v-tag">Dev</div> 
                         <div class="v-num">v1.3.4.251218</div>
-                        <div class="v-row"><span>Build Time</span><span class="v-val">2025-12-18 20:05:00</span></div>
+                        <div class="v-row"><span>Build Time</span><span class="v-val">2025-12-18 19:05:00</span></div>
                         <div class="v-row" style="margin-top:2px;"><span>Release</span><span class="v-val">2025-12-18 20:10:00</span></div>
                         <div class="v-btn" onclick="window.open('/')">
                             <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-                            当前版本
+                            暂无日志
+                     </div>
+                      </div>
+                     <div class="version-item">
+                        <div class="v-tag">Dev</div> 
+                        <div class="v-num">v1.4.0.260104</div>
+                        <div class="v-row"><span>Build Time</span><span class="v-val">2026-01-04 15:34:00</span></div>
+                        <div class="v-row" style="margin-top:2px;"><span>Release</span><span class="v-val">2025-01-04 19:56:02</span></div>
+                        <div class="v-btn" onclick="window.open('https://github.com/KangQiovo/KangQi-OS')">
+                            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                            查看详情
                      </div>
                  </div>
             </div>
-
+            
+            </div>
             <div class="details-overlay slide-view debug-view" id="debug-details" onclick="handleOverlayClick(event)">
                 <div class="back-btn debug-back" onclick="closeDebugMode()"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg></div>
                 <div class="info-card">
@@ -1742,7 +1753,7 @@
     <div class="perf-overlay-container" id="perf-overlay">
         <div class="perf-header">
             <div class="perf-header-left">
-                <div class="perf-logo-thumb"><img src="KangQi_OS.png" alt="手机性能排行"></div>
+                <div class="perf-logo-thumb"><img src="sj.png" alt="手机性能排行"></div>
                 <div>
                     <div class="perf-title">手机性能排行</div>
                     <div class="perf-sub">ReDroid 部署 · 点击即可进入应用</div>
@@ -2479,7 +2490,7 @@
             
             // --- RESTORED: WebKit Version Display ---
             const versionDisplays = document.querySelectorAll('.version-display-target');
-            versionDisplays.forEach(el => { el.textContent = `Dev v1.3.4.251218 | WebKit ${webkitVer}`; });
+            versionDisplays.forEach(el => { el.textContent = `Dev v1.4.0.260104 | WebKit ${webkitVer}`; });
             
             document.getElementById('val-device').innerText = platform;
             document.getElementById('val-browser').innerText = fullNameAndVersion;
@@ -3866,7 +3877,7 @@
         }
 
         /* --- Phone Benchmark App (ReDroid) --- */
-        const PERF_APP_URL = window.PERF_APP_URL || 'http://localhost:6080';
+        const PERF_APP_URL = window.PERF_APP_URL || 'https://sj.liuner.top/#!action=stream&udid=emulator-5554&player=mse&ws=wss%3A%2F%2Fsj.liuner.top%2F%3Faction%3Dproxy-adb%26remote%3Dtcp%253A8886%26udid%3Demulator-5554';
 
         window.openPerfApp = function() {
             document.body.classList.add('perf-open');
