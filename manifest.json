@@ -1,0 +1,21 @@
+{
+  "name": "KangQi OS",
+  "short_name": "KangQiOS",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#050505",
+  "theme_color": "#050505",
+  "description": "KangQi OS web体验，支持聊天、应用及主屏场景。",
+  "icons": [
+    {
+      "src": "KangQi_OS.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "KangQi_OS.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
